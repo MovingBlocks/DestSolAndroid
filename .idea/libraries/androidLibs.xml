@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="androidLibs">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/android/libs/sol.jar!/" />
+      <root url="jar://$PROJECT_DIR$/android/libs/gdx.jar!/" />
+      <root url="jar://$PROJECT_DIR$/android/libs/gdx-backend-android.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/android/libs/solSrc.jar!/" />
+    </SOURCES>
+  </library>
+</component>

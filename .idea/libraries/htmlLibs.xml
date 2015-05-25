@@ -1,0 +1,16 @@
+<component name="libraryTable">
+  <library name="htmlLibs">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/html/libs/gdx-backend-gwt.jar!/" />
+      <root url="jar://$PROJECT_DIR$/android/libs/sol.jar!/" />
+      <root url="jar://$PROJECT_DIR$/android/libs/gdx.jar!/" />
+      <root url="jar://$PROJECT_DIR$/html/libs/gdx-backend-gwt-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/html/libs/gdx-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/android/libs/solSrc.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/android/libs/solSrc.jar!/" />
+    </SOURCES>
+  </library>
+</component>

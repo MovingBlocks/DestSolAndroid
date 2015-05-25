@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact name="solHtml">
+    <output-path>$PROJECT_DIR$/out/artifacts/solHtml</output-path>
+    <root id="root">
+      <element id="gwt-compiler-output" facet="html/gwt/GWT" />
+    </root>
+  </artifact>
+</component>
