@@ -23,6 +23,31 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
 }
 
+ext {
+    // Set broken defaults just so Gradle won't complain about non-existent properties. Supply real values externally
+    keyStoreToUse = "notset"
+    storePassToUse = "notset"
+    keyAliasToUse = "notset"
+    keyPassToUse = "notset"
+
+    // Load values from properties passed to the project, such as via gradle.properties in the user's home .gradle dir
+    if (project.hasProperty("signingKeystore")) {
+        keyStoreToUse = signingKeystore
+    }
+
+    if (project.hasProperty("signingStorePass")) {
+        storePassToUse = signingStorePass
+    }
+
+    if (project.hasProperty("signingKeyAlias")) {
+        keyAliasToUse = signingKeyAlias
+    }
+
+    if (project.hasProperty("signingKeyPass")) {
+        keyPassToUse = signingKeyPass
+    }
+}
+
 android {
     buildToolsVersion "20.0.0"
     compileSdkVersion 18
@@ -38,6 +63,26 @@ android {
         }
 
         instrumentTest.setRoot('tests')
+    }
+    lintOptions {
+        abortOnError false
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(keyStoreToUse)
+            storePassword storePassToUse
+            keyAlias keyAliasToUse
+            keyPassword keyPassToUse
+        }
+    }
+
+    buildTypes {
+        release {
+            debuggable false
+            jniDebuggable false
+            signingConfig signingConfigs.release
+        }
     }
 }
 
