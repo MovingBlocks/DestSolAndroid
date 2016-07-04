@@ -3,11 +3,23 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.2.3'
+        classpath 'com.android.tools.build:gradle:2.1.0'
     }
 }
 
 apply plugin: "android"
+
+repositories {
+    // Good ole Maven central
+    mavenCentral()
+
+    // Repos for LibGDX
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+    maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+
+    // Terasology Artifactory for any shared libs
+    maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+}
 
 configurations { natives }
 
@@ -142,8 +154,8 @@ eclipse {
     }
 
     jdt {
-        sourceCompatibility = 1.7
-        targetCompatibility = 1.7
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
     }
 
     classpath {
