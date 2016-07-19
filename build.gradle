@@ -7,7 +7,8 @@ buildscript {
     }
 }
 
-apply plugin: "android"
+// TODO: Examine the switch from plain "android" to this some more
+apply plugin: "com.android.application"
 
 repositories {
     // Good ole Maven central
@@ -24,6 +25,7 @@ repositories {
 configurations { natives }
 
 dependencies {
+    // TODO: Maybe exclude the commons-logging dependency from main (or set it as 'provided' here)
     compile project(":main")
     compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
@@ -61,8 +63,22 @@ ext {
 }
 
 android {
-    buildToolsVersion "20.0.0"
+    buildToolsVersion "24.0.0"
     compileSdkVersion 18
+
+    // Enable Jack for Java 8 stuff
+    defaultConfig {
+        jackOptions {
+            enabled true
+        }
+    }
+
+    // Make it clear we're compiling for Java 8
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
