@@ -1,9 +1,11 @@
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.0'
+        classpath 'com.android.tools.build:gradle:3.2.1'
     }
 }
 
@@ -11,22 +13,59 @@ buildscript {
 apply plugin: "com.android.application"
 
 repositories {
+    mavenLocal()
+
     // Good ole Maven central
     mavenCentral()
+
+    jcenter()
+
+    // For the Android libraries
+    google()
 
     // Repos for LibGDX
     maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
     maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 
     // Terasology Artifactory for any shared libs
-    maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+    //maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+
+    // everit-org JSON schema dependency
+    maven { url "https://jitpack.io" }
 }
 
-configurations { natives }
+configurations {
+    natives
+}
 
 dependencies {
     // TODO: Maybe exclude the commons-logging dependency from main (or set it as 'provided' here)
-    compile project(":main")
+    api 'com.google.guava:guava:27.0.1-android'
+    api 'org.reflections:reflections:0.9.12-SNAPSHOT'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'org.apache.commons:commons-vfs2:2.2'
+    implementation 'org.slf4j:slf4j-api:1.7.25'
+    implementation 'org.slf4j:slf4j-android:1.7.25'
+    implementation 'com.android.support:support-annotations:28.0.0'
+    implementation 'net.jcip:jcip-annotations:1.0'
+    implementation 'net.sf.trove4j:trove4j:3.0.3'
+    implementation 'com.google.protobuf:protobuf-java:3.4.0'
+    implementation 'com.googlecode.gentyref:gentyref:1.2.0'
+    api "com.github.everit-org.json-schema:org.everit.json.schema:1.9.2"
+
+    compile files("$rootDir/gestalt/gestalt-util/build/libs/gestalt-util-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-module/build/libs/gestalt-module-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-asset-core/build/libs/gestalt-asset-core-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-entity-system/build/libs/gestalt-entity-system-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-android/build/intermediates/intermediate-jars/debug/classes.jar")
+
+    compile(project(":engine")) {
+        exclude group: "org.terasology", module: "gestalt-util"
+        exclude group: "org.terasology", module: "gestalt-module"
+        exclude group: "org.terasology", module: "gestalt-asset-core"
+        exclude group: "org.terasology", module: "gestalt-entity-system"
+    }
+
     compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
@@ -63,15 +102,7 @@ ext {
 }
 
 android {
-    buildToolsVersion "24.0.0"
-    compileSdkVersion 18
-
-    // Enable Jack for Java 8 stuff
-    defaultConfig {
-        jackOptions {
-            enabled true
-        }
-    }
+    compileSdkVersion 28
 
     // Make it clear we're compiling for Java 8
     compileOptions {
@@ -83,17 +114,21 @@ android {
         main {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
-            aidl.srcDirs = ['src']
+            //aidl.srcDirs = ['src']
             renderscript.srcDirs = ['src']
             res.srcDirs = ['res']
             assets.srcDirs = ['assets']
             jniLibs.srcDirs = ['libs']
         }
-
-        instrumentTest.setRoot('tests')
     }
     lintOptions {
         abortOnError false
+    }
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 28
+        multiDexEnabled true
     }
 
     signingConfigs {
