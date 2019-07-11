@@ -58,6 +58,7 @@ import java.util.Set;
 
 public class AndroidModuleManager extends ModuleManager {
     private Context context;
+    private Module engineCodeModule;
 
     public AndroidModuleManager(Context context) {
         this.context = context;
@@ -84,6 +85,15 @@ public class AndroidModuleManager extends ModuleManager {
             scanner.scan(registry, new File(filesPath, "modules"));
 
             engineModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
+
+            ModuleMetadata engineCodeMetadata = new ModuleMetadata();
+            engineCodeMetadata.setId(new Name("engine-code"));
+            engineCodeMetadata.setDisplayName(engineMetadata.getDisplayName());
+            engineCodeMetadata.setDescription(engineMetadata.getDescription());
+            engineCodeMetadata.setVersion(engineMetadata.getVersion());
+            engineCodeModule = moduleFactory.createPackageModule(engineCodeMetadata, "org.destinationsol");
+
+            registry.add(engineCodeModule);
             requiredModules.addAll(registry);
             loadEnvironment(requiredModules);
         } catch (Exception e) {
@@ -125,6 +135,16 @@ public class AndroidModuleManager extends ModuleManager {
         }
 
         copyModules(dataDir, assets, "modules", !versionString.equals(Const.VERSION));
+
+        File musicFolder = new File(dataDir, "music");
+        File soundFolder = new File(dataDir, "sound");
+        if (!musicFolder.exists()) {
+            musicFolder.mkdir();
+        }
+
+        if (!soundFolder.exists()) {
+            soundFolder.mkdir();
+        }
     }
 
     private void copyModules(File dataDir, AssetManager assets, String rootDir, boolean replaceFiles) {
@@ -133,6 +153,7 @@ public class AndroidModuleManager extends ModuleManager {
             for (String fileToCopy : filesToCopy) {
                 String filePath = rootDir + "/" + fileToCopy;
                 File file = new File(dataDir + "/" + rootDir, fileToCopy);
+                file.mkdirs();
                 if (assets.list(filePath).length > 0) {
                     // File is a directory
                     if (!file.exists()) {
@@ -199,7 +220,6 @@ public class AndroidModuleManager extends ModuleManager {
 
         APIScanner scanner = new APIScanner(permissionFactory);
         scanner.scan(reflections);
-        //scanner.scan(engineModule);
 
         // TODO: Android does not appear to allow changing the system security policy. Modules will run without a sandbox (though Android's sandbox should be enough).
         //Policy.setPolicy(new ModuleSecurityPolicy());

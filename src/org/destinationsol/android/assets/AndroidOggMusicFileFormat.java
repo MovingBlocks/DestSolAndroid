@@ -39,13 +39,10 @@ public class AndroidOggMusicFileFormat extends AbstractAssetFileFormat<OggMusicD
         //       constructor, so we cannot use the same workaround as with AssetDataFileHandle. The only plausible way
         //        to do this appears to be to save the data out to a file and point LibGDX at that.
         AssetDataFile asset = inputs.get(0);
-        InputStream fileStream = asset.openStream();
-        FileHandle outFile = Gdx.files.local("music/" + asset.getFilename() + asset.getFileExtension());
+        FileHandle outFile = Gdx.files.local("music/" + urn.toString().replace(":", "_") + "." + inputs.get(0).getFileExtension());
         if (!outFile.exists()) {
-            byte[] buffer = new byte[512];
-            while (fileStream.read(buffer) != -1) {
-                outFile.writeBytes(buffer, true);
-            }
+            InputStream fileStream = asset.openStream();
+            outFile.write(fileStream, false);
         }
 
         return new OggMusicData(Gdx.audio.newMusic(outFile));
