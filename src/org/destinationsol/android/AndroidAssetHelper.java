@@ -58,7 +58,7 @@ public class AndroidAssetHelper extends AssetHelper {
         assetTypeManager.createAssetType(Emitter.class, Emitter::new, "emitters");
         ((AssetFileDataProducer)assetTypeManager.getAssetType(Emitter.class).get().getProducers().get(0)).addAssetFormat(new AndroidEmitterFileFormat());
 
-        assetTypeManager.createAssetType(Json.class, Json::new, "collisionMeshes", "ships", "items", "configs", "grounds", "mazes", "asteroids");
+        assetTypeManager.createAssetType(Json.class, Json::new, "collisionMeshes", "ships", "items", "configs", "grounds", "mazes", "asteroids", "schemas");
         ((AssetFileDataProducer)assetTypeManager.getAssetType(Json.class).get().getProducers().get(0)).addAssetFormat(new AndroidJsonFileFormat());
 
         assetTypeManager.createAssetType(DSTexture.class, DSTexture::new, "textures", "ships", "items", "grounds", "mazes", "asteroids");

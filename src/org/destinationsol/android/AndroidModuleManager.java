@@ -39,6 +39,7 @@ import org.reflections.scanners.TypeAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.terasology.naming.Name;
+import org.terasology.naming.Version;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -72,11 +73,8 @@ public class AndroidModuleManager extends ModuleManager {
             ModuleMetadata engineMetadata = new ModuleMetadataJsonAdapter().read(engineModuleReader);
             engineModuleReader.close();
             ModuleFactory moduleFactory = new DestinationSolModuleFactory();
-            engineMetadata.setId(new Name("engine-code"));
-            engineModule = moduleFactory.createPackageModule(engineMetadata, "org.destinationsol");
 
             registry = new TableModuleRegistry();
-            registry.add(engineModule);
             Set<Module> requiredModules = Sets.newHashSet();
 
             // The "assets" directory only exists within the APK, which makes it inefficient to traverse
@@ -85,6 +83,7 @@ public class AndroidModuleManager extends ModuleManager {
             ModulePathScanner scanner = new ModulePathScanner(moduleFactory);
             scanner.scan(registry, new File(filesPath, "modules"));
 
+            engineModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
             requiredModules.addAll(registry);
             loadEnvironment(requiredModules);
         } catch (Exception e) {

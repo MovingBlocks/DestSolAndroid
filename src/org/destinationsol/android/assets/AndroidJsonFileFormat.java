@@ -16,7 +16,6 @@
 package org.destinationsol.android.assets;
 
 import com.badlogic.gdx.files.FileHandle;
-import org.destinationsol.assets.Assets;
 import org.destinationsol.assets.json.JsonData;
 import org.json.JSONObject;
 import org.terasology.assets.ResourceUrn;
@@ -35,8 +34,6 @@ public class AndroidJsonFileFormat extends AbstractAssetFileFormat<JsonData> {
 
     @Override
     public JsonData load(ResourceUrn urn, List<AssetDataFile> inputs) throws IOException {
-        String path = Assets.getAssetHelper().resolveToPath(inputs);
-
         FileHandle handle = new AndroidAssetDataFileHandle(inputs.get(0));
         JSONObject jsonValue;
         try {
