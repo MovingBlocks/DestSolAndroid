@@ -1,9 +1,18 @@
+import groovy.json.JsonSlurper
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.FileSystem
+import java.nio.file.FileSystems
+import java.nio.file.Files
+
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.0'
+        classpath 'com.android.tools.build:gradle:3.2.1'
     }
 }
 
@@ -11,22 +20,62 @@ buildscript {
 apply plugin: "com.android.application"
 
 repositories {
+    mavenLocal()
+
     // Good ole Maven central
     mavenCentral()
+
+    jcenter()
+
+    // For the Android libraries
+    google()
 
     // Repos for LibGDX
     maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
     maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 
     // Terasology Artifactory for any shared libs
-    maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+    //maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+
+    // everit-org JSON schema dependency
+    maven { url "https://jitpack.io" }
+
+    // Used for referencing the gestalt-android aar
+    flatDir {
+        dirs "$rootDir/gestalt/gestalt-android/build/outputs/aar"
+    }
 }
 
-configurations { natives }
+configurations {
+    natives
+}
 
 dependencies {
     // TODO: Maybe exclude the commons-logging dependency from main (or set it as 'provided' here)
-    compile project(":main")
+    api 'com.google.guava:guava:27.0.1-android'
+    api 'org.reflections:reflections:0.9.12-SNAPSHOT'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'org.apache.commons:commons-vfs2:2.2'
+    implementation 'com.android.support:support-annotations:28.0.0'
+    implementation 'net.jcip:jcip-annotations:1.0'
+    implementation 'net.sf.trove4j:trove4j:3.0.3'
+    implementation 'com.google.protobuf:protobuf-java:3.4.0'
+    implementation 'com.googlecode.gentyref:gentyref:1.2.0'
+    api "com.github.everit-org.json-schema:org.everit.json.schema:1.9.2"
+
+    compile files("$rootDir/gestalt/gestalt-util/build/libs/gestalt-util-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-module/build/libs/gestalt-module-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-asset-core/build/libs/gestalt-asset-core-7.0.0-SNAPSHOT.jar")
+    compile files("$rootDir/gestalt/gestalt-entity-system/build/libs/gestalt-entity-system-7.0.0-SNAPSHOT.jar")
+    compile(name: 'gestalt-android-release' , ext: 'aar')
+
+    compile(project(":engine")) {
+        exclude group: "org.terasology", module: "gestalt-util"
+        exclude group: "org.terasology", module: "gestalt-module"
+        exclude group: "org.terasology", module: "gestalt-asset-core"
+        exclude group: "org.terasology", module: "gestalt-entity-system"
+    }
+
     compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
@@ -43,6 +92,10 @@ ext {
     storePassToUse = "notset"
     keyAliasToUse = "notset"
     keyPassToUse = "notset"
+
+    compileSdk = 28
+    minSdk = 24
+    targetSdk = 28
 
     // Load values from properties passed to the project, such as via gradle.properties in the user's home .gradle dir
     if (project.hasProperty("signingKeystore")) {
@@ -63,15 +116,7 @@ ext {
 }
 
 android {
-    buildToolsVersion "24.0.0"
-    compileSdkVersion 18
-
-    // Enable Jack for Java 8 stuff
-    defaultConfig {
-        jackOptions {
-            enabled true
-        }
-    }
+    compileSdkVersion(compileSdk)
 
     // Make it clear we're compiling for Java 8
     compileOptions {
@@ -83,17 +128,21 @@ android {
         main {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
-            aidl.srcDirs = ['src']
+            //aidl.srcDirs = ['src']
             renderscript.srcDirs = ['src']
             res.srcDirs = ['res']
             assets.srcDirs = ['assets']
             jniLibs.srcDirs = ['libs']
         }
-
-        instrumentTest.setRoot('tests')
     }
     lintOptions {
         abortOnError false
+    }
+
+    defaultConfig {
+        targetSdkVersion(targetSdk)
+        minSdkVersion(minSdk)
+        multiDexEnabled true
     }
 
     signingConfigs {
@@ -137,7 +186,108 @@ task copyAndroidNatives() {
     }
 }
 
-task android(type: Exec) {
+task copyModules() {
+    // Clear the modules directory to ensure that it is up-to date
+    new File("$projectDir/assets", "modules").delete()
+
+    copy {
+        from "$rootDir"
+        into "$projectDir/assets"
+        include "modules/**"
+        exclude "modules/modules.iml"
+        exclude "modules/*/*.iml"
+        exclude "modules/*/README.md"
+        exclude "modules/*/LICENSE.md"
+        exclude "modules/*/build.gradle"
+        exclude "modules/*/build"
+        exclude "modules/*/src"
+        exclude "modules/subprojects.gradle"
+    }
+    copy {
+        from "$rootDir/engine/src/main/resources"
+        into "$projectDir/assets/modules/engine"
+        include "assets/**"
+        include "module.json"
+    }
+}
+
+task modulesCompile
+rootProject.destinationSolModules().each { module ->
+    modulesCompile.dependsOn ":modules:$module.name" + ":compileJava"
+}
+
+task reflectModules() {
+    dependsOn modulesCompile
+
+    def path = androidSdkPath()
+    def dexCommand = System.getProperty("os.name").toLowerCase().contains("windows") ? "dx.bat" : "dx"
+    def buildToolsVersions = new File(path, "build-tools").listFiles(new FileFilter() {
+        @Override
+        boolean accept(File file) {
+            return file.isDirectory() && file.name.startsWith("$compileSdk.")
+        }
+    })
+
+    if (buildToolsVersions.length == 0) {
+        throw new TaskExecutionException(reflectModules, new FileNotFoundException("The Android SDK build tools version $compileSdk could not be found."))
+    }
+    def dex = "${buildToolsVersions[0]}/$dexCommand"
+    for (module in rootProject.destinationSolModules()) {
+        def moduleVersion = new JsonSlurper().parseText(new File("$rootDir/modules/${module.name}/module.json").text).version
+        def moduleClassesDir = "${rootProject.projectDir}/modules/${module.name}/build/classes/"
+        def moduleClassesFiles = fileTree(moduleClassesDir).filter { it.isFile() && it.name.endsWith('.class')}.files
+        def classesRootPath = new File(moduleClassesDir).toPath()
+        def moduleClasses = []
+        for (file in moduleClassesFiles) {
+            moduleClasses.add(classesRootPath.relativize(file.toPath()))
+        }
+        if (moduleClasses.size() == 0) {
+            // The dexed code jars are only produced for code-bearing modules.
+            continue;
+        }
+        def jarOutputDir = "$projectDir/assets/modules/${module.name}-code-${moduleVersion}.jar"
+        exec {
+            workingDir moduleClassesDir
+            commandLine (["$dex", '--dex', '--output', /*'--keep-classes',*/ "\"$jarOutputDir\""] + moduleClasses)
+        }
+        FileSystem jarFileSystem
+        try {
+            jarFileSystem = FileSystems.newFileSystem(URI.create("jar:" + new File(jarOutputDir).toURI()), new HashMap<String, Object>())
+            def moduleManifestContents =
+                    "{\n" +
+                    "    \"id\" : \"MODULE_ID\",\n" +
+                    "    \"version\" : \"MODULE_VERSION\",\n" +
+                    "    \"displayName\" : \"MODULE_NAME Code\",\n" +
+                    "    \"description\" : \"Code for MODULE_NAME\",\n" +
+                    "    \"dependencies\" :  [\n" +
+                    "        {\n" +
+                    "            \"id\" : \"MODULE_NAME\"\n" +
+                    "        }\n" +
+                    "    ]\n" +
+                    "}"
+            moduleManifestContents = moduleManifestContents
+                    .replace("MODULE_ID", module.name + "-code")
+                    .replace("MODULE_NAME", module.name)
+                    .replace("MODULE_VERSION", moduleVersion)
+            Files.write(jarFileSystem.getPath("module.json"), [moduleManifestContents], StandardCharsets.UTF_8)
+            Files.createDirectories(jarFileSystem.getPath("build/classes"))
+            moduleClassesFiles.each {
+                Files.copy(it.toPath(), jarFileSystem.getPath("/build/classes/${it.name}"))
+            }
+        } catch (Exception e) {
+            e.printStackTrace()
+        } finally {
+            if (jarFileSystem != null) {
+                jarFileSystem.close()
+            }
+        }
+    }
+}
+
+preBuild.dependsOn(copyModules)
+copyModules.finalizedBy(reflectModules)
+
+def androidSdkPath() {
     def path
     def localProperties = project.file("../local.properties")
     if (localProperties.exists()) {
@@ -154,7 +304,11 @@ task android(type: Exec) {
     } else {
         path = "$System.env.ANDROID_HOME"
     }
+    return path
+}
 
+task android(type: Exec) {
+    def path = androidSdkPath()
     def adb = path + "/platform-tools/adb"
     commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.miloshpetrov.sol2.android/com.miloshpetrov.sol2.android.SolAndroid'
 }

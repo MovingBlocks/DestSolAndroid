@@ -1,0 +1,133 @@
+/*
+ * Copyright 2018 MovingBlocks
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.destinationsol.android;
+
+import org.destinationsol.android.assets.AndroidDSTextureFileFormat;
+import org.destinationsol.android.assets.AndroidEmitterFileFormat;
+import org.destinationsol.android.assets.AndroidJsonFileFormat;
+import org.destinationsol.android.assets.AndroidOggMusicFileFormat;
+import org.destinationsol.android.assets.AndroidOggSoundFileFormat;
+import org.destinationsol.assets.AssetHelper;
+import org.destinationsol.assets.audio.OggMusic;
+import org.destinationsol.assets.audio.OggSound;
+import org.destinationsol.assets.emitters.Emitter;
+import org.destinationsol.assets.fonts.Font;
+import org.destinationsol.assets.fonts.FontFileFormat;
+import org.destinationsol.assets.json.Json;
+import org.destinationsol.assets.textures.DSTexture;
+import org.terasology.assets.Asset;
+import org.terasology.assets.AssetData;
+import org.terasology.assets.ResourceUrn;
+import org.terasology.assets.format.AssetDataFile;
+import org.terasology.assets.format.producer.AssetFileDataProducer;
+import org.terasology.assets.module.ModuleAwareAssetTypeManagerImpl;
+import org.terasology.module.ModuleEnvironment;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+public class AndroidAssetHelper extends AssetHelper {
+    @Override
+    public void init(ModuleEnvironment environment) {
+        assetTypeManager = new ModuleAwareAssetTypeManagerImpl();
+
+        assetTypeManager.createAssetType(OggSound.class, OggSound::new, "sounds");
+        ((AssetFileDataProducer)assetTypeManager.getAssetType(OggSound.class).get().getProducers().get(0)).addAssetFormat(new AndroidOggSoundFileFormat());
+
+        assetTypeManager.createAssetType(OggMusic.class, OggMusic::new, "music");
+        ((AssetFileDataProducer)assetTypeManager.getAssetType(OggMusic.class).get().getProducers().get(0)).addAssetFormat(new AndroidOggMusicFileFormat());
+
+        assetTypeManager.createAssetType(Font.class, Font::new, "fonts");
+        ((AssetFileDataProducer)assetTypeManager.getAssetType(Font.class).get().getProducers().get(0)).addAssetFormat(new FontFileFormat());
+
+        assetTypeManager.createAssetType(Emitter.class, Emitter::new, "emitters");
+        ((AssetFileDataProducer)assetTypeManager.getAssetType(Emitter.class).get().getProducers().get(0)).addAssetFormat(new AndroidEmitterFileFormat());
+
+        assetTypeManager.createAssetType(Json.class, Json::new, "collisionMeshes", "ships", "items", "configs", "grounds", "mazes", "asteroids", "schemas");
+        ((AssetFileDataProducer)assetTypeManager.getAssetType(Json.class).get().getProducers().get(0)).addAssetFormat(new AndroidJsonFileFormat());
+
+        assetTypeManager.createAssetType(DSTexture.class, DSTexture::new, "textures", "ships", "items", "grounds", "mazes", "asteroids");
+        ((AssetFileDataProducer)assetTypeManager.getAssetType(DSTexture.class).get().getProducers().get(0)).addAssetFormat(new AndroidDSTextureFileFormat());
+
+        assetTypeManager.switchEnvironment(environment);
+    }
+
+    // The following three methods are overrides in order to fix the runtime errors that occur
+
+    @Override
+    public <T extends Asset<U>, U extends AssetData> Optional<T> get(ResourceUrn urn, Class<T> type) {
+        return assetTypeManager.getAssetManager().getAsset(urn, type);
+    }
+
+    @Override
+    public Set<ResourceUrn> list(Class<? extends Asset<?>> type) {
+        return assetTypeManager.getAssetManager().getAvailableAssets(type);
+    }
+
+    @Override
+    public Set<ResourceUrn> list(Class<? extends Asset<?>> type, String regex) {
+        Set<ResourceUrn> finalList = new HashSet<>();
+
+        Set<ResourceUrn> resourceList = assetTypeManager.getAssetManager().getAvailableAssets(type);
+        for (ResourceUrn resourceUrn : resourceList) {
+            if (resourceUrn.toString().matches(regex)) {
+                finalList.add(resourceUrn);
+            }
+        }
+
+        return finalList;
+    }
+
+    // TODO: This method does not work, although it may not be needed.
+    @Override
+    public String resolveToPath(List<AssetDataFile> assetDataFiles) {
+        for (AssetDataFile assetDataFile : assetDataFiles) {
+            List<String> folders = assetDataFile.getPath();
+
+            boolean validPath = true;
+            if (folders_ != null) {
+                for (int i = 0; i < folders_.length; i++) {
+                    if (!folders_[i].equals(folders.get(folders.size() - i - 1))) {
+                        validPath = false;
+                        break;
+                    }
+                }
+            }
+            if (!validPath) {
+                continue;
+            }
+
+            StringBuilder path = new StringBuilder();
+            if (!folders.get(0).equals("assets")) {
+                path.append("modules/").append(folders.get(0)).append("/");
+            } else {
+                path.append("modules/engine/assets/");
+            }
+
+            for (int i = 1; i < folders.size(); i++) {
+                path.append(folders.get(i)).append("/");
+            }
+
+            path.append(assetDataFile.getFilename());
+
+            return path.toString();
+        }
+
+        throw new RuntimeException("Could not resolve path!");
+    }
+}
