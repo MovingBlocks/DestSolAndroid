@@ -102,6 +102,17 @@ public class AndroidModuleManager extends ModuleManager {
         }
     }
 
+    private void clearCachedModules(File modulesDir) {
+        File[] files = modulesDir.listFiles();
+        if (files != null) {
+            for (File file : modulesDir.listFiles()) {
+                clearCachedModules(file);
+            }
+        }
+
+        modulesDir.delete();
+    }
+
     private void copyModulesToDataDir(File dataDir, AssetManager assets) {
         File assetVersionFile = new File(dataDir, "version.txt");
         String versionString = "";
@@ -122,7 +133,9 @@ public class AndroidModuleManager extends ModuleManager {
             }
         }
 
-        if (!versionString.equals(Const.VERSION)) {
+        boolean refreshCache = (!versionString.equals(Const.VERSION) || com.miloshpetrov.sol2.android.BuildConfig.DEBUG);
+
+        if (refreshCache) {
             try (FileOutputStream stream = new FileOutputStream(assetVersionFile)) {
                 try (OutputStreamWriter writer = new OutputStreamWriter(stream)) {
                     writer.write(Const.VERSION);
@@ -132,9 +145,11 @@ public class AndroidModuleManager extends ModuleManager {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            clearCachedModules(new File(dataDir, "modules"));
         }
 
-        copyModules(dataDir, assets, "modules", !versionString.equals(Const.VERSION));
+        copyModules(dataDir, assets, "modules", refreshCache);
 
         File musicFolder = new File(dataDir, "music");
         File soundFolder = new File(dataDir, "sound");
