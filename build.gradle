@@ -35,7 +35,7 @@ repositories {
     maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 
     // Terasology Artifactory for any shared libs
-    maven { url "http://artifactory.terasology.org/artifactory/virtual-nanoware-and-remote" }
+    maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
 
     // everit-org JSON schema dependency
     maven { url "https://jitpack.io" }
@@ -61,7 +61,7 @@ dependencies {
     compile(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
 
     compile(project(":engine"))
-    compile(group: 'gestalt', name: 'gestalt-android', version: '7.42.0-20190805.025131-1', ext: 'aar')
+    compile(group: 'gestalt', name: 'gestalt-android', version: '7.0.0', ext: 'aar')
 
     compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
