@@ -258,7 +258,7 @@ task reflectModules() {
                 commandLine (["$dex"] + moduleClasses + ['--classpath', "$rootDir/engine/build/classes",
                                                          '--lib', "$path/platforms/android-$compileSdk/android.jar",
                                                          '--min-api', "$minSdk",
-                                                         '--output', $jarOutputDir])
+                                                         '--output', "$jarOutputDir"])
             }
             FileSystem jarFileSystem
             try {
