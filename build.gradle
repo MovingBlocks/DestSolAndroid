@@ -50,7 +50,6 @@ configurations {
 dependencies {
     // TODO: Maybe exclude the commons-logging dependency from main (or set it as 'provided' here)
     api 'com.google.guava:guava:27.0.1-android'
-    api 'org.reflections:reflections:0.9.12-SNAPSHOT'
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'org.apache.commons:commons-vfs2:2.2'
     compile group: 'com.android.support', name: 'support-annotations', version: '28.0.0'
@@ -61,7 +60,7 @@ dependencies {
     compile(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
 
     compile(project(":engine"))
-    compile(group: 'gestalt', name: 'gestalt-android', version: '7.0.0', ext: 'aar')
+    compile(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.0.3', ext: 'aar')
 
     compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
