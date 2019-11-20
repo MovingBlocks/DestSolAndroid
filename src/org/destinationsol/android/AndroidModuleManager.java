@@ -84,16 +84,15 @@ public class AndroidModuleManager extends ModuleManager {
             ModulePathScanner scanner = new ModulePathScanner(moduleFactory);
             scanner.scan(registry, new File(filesPath, "modules"));
 
-            engineModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
+            InputStream engineReflectionsStream = assets.open("modules/engine/reflections.cache");
+            Reflections engineReflections = new ConfigurationBuilder().getSerializer().read(engineReflectionsStream);
+            engineReflectionsStream.close();
 
-            ModuleMetadata engineCodeMetadata = new ModuleMetadata();
-            engineCodeMetadata.setId(new Name("engine-code"));
-            engineCodeMetadata.setDisplayName(engineMetadata.getDisplayName());
-            engineCodeMetadata.setDescription(engineMetadata.getDescription());
-            engineCodeMetadata.setVersion(engineMetadata.getVersion());
-            engineCodeModule = moduleFactory.createPackageModule(engineCodeMetadata, "org.destinationsol");
+            Module engineDataModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
+            registry.remove(engineDataModule);
+            engineModule = new Module(engineMetadata, engineDataModule.getResources(), engineDataModule.getClasspaths(), engineReflections, x -> true);
 
-            registry.add(engineCodeModule);
+            registry.add(engineModule);
             requiredModules.addAll(registry);
             loadEnvironment(requiredModules);
         } catch (Exception e) {

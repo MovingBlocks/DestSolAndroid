@@ -186,29 +186,38 @@ def deleteDir(File dir) {
 task copyModules() {
     inputs.dir("$rootDir/engine/src/main/resources/")
     inputs.dir("$rootDir/assets/")
-    dependsOn ":engine:jar"
+    dependsOn ":engine:cacheReflections"
 
-    // Clear the modules directory to ensure that it is up-to date
-    deleteDir(new File("$projectDir/assets", "modules"))
+    doLast {
+        // Clear the modules directory to ensure that it is up-to date
+        deleteDir(new File("$projectDir/assets", "modules"))
 
-    copy {
-        from "$rootDir"
-        into "$projectDir/assets"
-        include "modules/**"
-        exclude "modules/modules.iml"
-        exclude "modules/*/*.iml"
-        exclude "modules/*/README.md"
-        exclude "modules/*/LICENSE.md"
-        exclude "modules/*/build.gradle"
-        exclude "modules/*/build"
-        exclude "modules/*/src"
-        exclude "modules/subprojects.gradle"
-    }
-    copy {
-        from "$rootDir/engine/src/main/resources"
-        into "$projectDir/assets/modules/engine"
-        include "assets/**"
-        include "module.json"
+        copy {
+            from "$rootDir"
+            into "$projectDir/assets"
+            include "modules/**"
+            exclude "modules/modules.iml"
+            exclude "modules/*/*.iml"
+            exclude "modules/*/README.md"
+            exclude "modules/*/LICENSE.md"
+            exclude "modules/*/build.gradle"
+            exclude "modules/*/build"
+            exclude "modules/*/src"
+            exclude "modules/subprojects.gradle"
+        }
+
+        copy {
+            from "$rootDir/engine/src/main/resources"
+            into "$projectDir/assets/modules/engine"
+            include "assets/**"
+            include "module.json"
+        }
+
+        copy {
+            from "$rootDir/engine/build/classes/java/main"
+            into "$projectDir/assets/modules/engine"
+            include "reflections.cache"
+        }
     }
 }
 
