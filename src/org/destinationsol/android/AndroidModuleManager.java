@@ -84,22 +84,32 @@ public class AndroidModuleManager extends ModuleManager {
             ModulePathScanner scanner = new ModulePathScanner(moduleFactory);
             scanner.scan(registry, new File(filesPath, "modules"));
 
-            engineModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
+            InputStream engineReflectionsStream = assets.open("modules/engine/reflections.cache");
+            Reflections engineReflections = new ConfigurationBuilder().getSerializer().read(engineReflectionsStream);
+            engineReflectionsStream.close();
 
-            ModuleMetadata engineCodeMetadata = new ModuleMetadata();
-            engineCodeMetadata.setId(new Name("engine-code"));
-            engineCodeMetadata.setDisplayName(engineMetadata.getDisplayName());
-            engineCodeMetadata.setDescription(engineMetadata.getDescription());
-            engineCodeMetadata.setVersion(engineMetadata.getVersion());
-            engineCodeModule = moduleFactory.createPackageModule(engineCodeMetadata, "org.destinationsol");
+            Module engineDataModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
+            registry.remove(engineDataModule);
+            engineModule = new Module(engineMetadata, engineDataModule.getResources(), engineDataModule.getClasspaths(), engineReflections, x -> true);
 
-            registry.add(engineCodeModule);
+            registry.add(engineModule);
             requiredModules.addAll(registry);
             loadEnvironment(requiredModules);
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    private void clearCachedModules(File modulesDir) {
+        File[] files = modulesDir.listFiles();
+        if (files != null) {
+            for (File file : modulesDir.listFiles()) {
+                clearCachedModules(file);
+            }
+        }
+
+        modulesDir.delete();
     }
 
     private void copyModulesToDataDir(File dataDir, AssetManager assets) {
@@ -122,7 +132,9 @@ public class AndroidModuleManager extends ModuleManager {
             }
         }
 
-        if (!versionString.equals(Const.VERSION)) {
+        boolean refreshCache = (!versionString.equals(Const.VERSION) || com.miloshpetrov.sol2.android.BuildConfig.DEBUG);
+
+        if (refreshCache) {
             try (FileOutputStream stream = new FileOutputStream(assetVersionFile)) {
                 try (OutputStreamWriter writer = new OutputStreamWriter(stream)) {
                     writer.write(Const.VERSION);
@@ -132,9 +144,11 @@ public class AndroidModuleManager extends ModuleManager {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            clearCachedModules(new File(dataDir, "modules"));
         }
 
-        copyModules(dataDir, assets, "modules", !versionString.equals(Const.VERSION));
+        copyModules(dataDir, assets, "modules", refreshCache);
 
         File musicFolder = new File(dataDir, "music");
         File soundFolder = new File(dataDir, "sound");
