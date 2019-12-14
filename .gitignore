@@ -49,6 +49,5 @@ assets/*
 !assets/copyResHere.txt
 
 ## Fastlane related files
-Gemfile.lock
 fastlane/README.md
 fastlane/report.xml

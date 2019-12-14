@@ -332,11 +332,13 @@ task android(type: Exec) {
     commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.miloshpetrov.sol2.android/com.miloshpetrov.sol2.android.SolAndroid'
 }
 
-task fastlane(type: Exec) {
+task fastlane << {
     if (!project.hasProperty("lane")) {
-        throw new StopExecutionException("Please specify lane to run. Usage: 'gradlew android:fastlane -Plane=lane'")
+        throw new GradleException("Please specify lane to run. Usage: 'gradlew fastlane -Plane=lane'")
     }
-    commandLine "fastlane", "$lane"
+    exec {
+        commandLine "fastlane", "$lane"
+    }
 }
 
 // sets up the Android Eclipse project, using the old Ant based build.
