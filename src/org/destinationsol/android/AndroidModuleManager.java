@@ -5,9 +5,7 @@ import android.content.res.AssetManager;
 import android.util.Log;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Sets;
-import com.google.common.collect.Queues;
 import com.google.common.io.ByteStreams;
-import com.google.common.io.CharStreams;
 import org.destinationsol.Const;
 import org.destinationsol.assets.AssetHelper;
 import org.destinationsol.assets.Assets;
@@ -17,7 +15,6 @@ import org.destinationsol.assets.emitters.Emitter;
 import org.destinationsol.assets.json.Json;
 import org.destinationsol.assets.textures.DSTexture;
 import org.destinationsol.game.SaveManager;
-import org.destinationsol.modules.DestinationSolModuleFactory;
 import org.destinationsol.modules.ModuleManager;
 import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.module.Module;
@@ -28,8 +25,6 @@ import org.terasology.gestalt.module.ModuleMetadataJsonAdapter;
 import org.terasology.gestalt.module.ModulePathScanner;
 import org.terasology.gestalt.module.TableModuleRegistry;
 import org.terasology.gestalt.module.sandbox.APIScanner;
-import org.terasology.gestalt.module.sandbox.ModuleSecurityManager;
-import org.terasology.gestalt.module.sandbox.ModuleSecurityPolicy;
 import org.terasology.gestalt.module.sandbox.StandardPermissionProviderFactory;
 import org.terasology.gestalt.android.AndroidModuleClassLoader;
 
@@ -43,7 +38,6 @@ import org.terasology.gestalt.naming.Version;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilePermission;
 import java.io.IOException;
@@ -52,8 +46,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.lang.reflect.ReflectPermission;
-import java.security.Policy;
-import java.util.Locale;
 import java.util.Set;
 
 public class AndroidModuleManager extends ModuleManager {
@@ -73,7 +65,7 @@ public class AndroidModuleManager extends ModuleManager {
             Reader engineModuleReader = new InputStreamReader(assets.open("modules/engine/module.json"), Charsets.UTF_8);
             ModuleMetadata engineMetadata = new ModuleMetadataJsonAdapter().read(engineModuleReader);
             engineModuleReader.close();
-            ModuleFactory moduleFactory = new DestinationSolModuleFactory();
+            ModuleFactory moduleFactory = new ModuleFactory();
 
             registry = new TableModuleRegistry();
             Set<Module> requiredModules = Sets.newHashSet();
