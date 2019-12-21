@@ -186,7 +186,7 @@ def deleteDir(File dir) {
 task copyModules() {
     inputs.dir("$rootDir/engine/src/main/resources/")
     inputs.dir("$rootDir/assets/")
-    dependsOn ":engine:cacheReflections"
+    dependsOn ":engine:compileJava"
 
     doLast {
         // Clear the modules directory to ensure that it is up-to date
@@ -216,7 +216,7 @@ task copyModules() {
         copy {
             from "$rootDir/engine/build/classes/java/main"
             into "$projectDir/assets/modules/engine"
-            include "reflections.cache"
+            include "manifest.json"
         }
     }
 }

@@ -20,8 +20,6 @@ import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.module.Module;
 import org.terasology.gestalt.module.ModuleEnvironment;
 import org.terasology.gestalt.module.ModuleFactory;
-import org.terasology.gestalt.module.ModuleMetadata;
-import org.terasology.gestalt.module.ModuleMetadataJsonAdapter;
 import org.terasology.gestalt.module.ModulePathScanner;
 import org.terasology.gestalt.module.TableModuleRegistry;
 import org.terasology.gestalt.module.sandbox.APIScanner;
@@ -33,8 +31,6 @@ import org.reflections.scanners.SubTypesScanner;
 import org.reflections.scanners.TypeAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
-import org.terasology.gestalt.naming.Name;
-import org.terasology.gestalt.naming.Version;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,13 +40,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.Reader;
 import java.lang.reflect.ReflectPermission;
 import java.util.Set;
 
 public class AndroidModuleManager extends ModuleManager {
     private Context context;
-    private Module engineCodeModule;
 
     public AndroidModuleManager(Context context) {
         this.context = context;
@@ -62,30 +56,17 @@ public class AndroidModuleManager extends ModuleManager {
         AssetManager assets = context.getAssets();
 
         try {
-            Reader engineModuleReader = new InputStreamReader(assets.open("modules/engine/module.json"), Charsets.UTF_8);
-            ModuleMetadata engineMetadata = new ModuleMetadataJsonAdapter().read(engineModuleReader);
-            engineModuleReader.close();
-            ModuleFactory moduleFactory = new ModuleFactory();
-
-            registry = new TableModuleRegistry();
-            Set<Module> requiredModules = Sets.newHashSet();
-
             // The "assets" directory only exists within the APK, which makes it inefficient to traverse
             copyModulesToDataDir(filesPath, assets);
 
+            registry = new TableModuleRegistry();
+            ModuleFactory moduleFactory = new ModuleFactory();
             ModulePathScanner scanner = new ModulePathScanner(moduleFactory);
             scanner.scan(registry, new File(filesPath, "modules"));
 
-            InputStream engineReflectionsStream = assets.open("modules/engine/reflections.cache");
-            Reflections engineReflections = new ConfigurationBuilder().getSerializer().read(engineReflectionsStream);
-            engineReflectionsStream.close();
-
-            Module engineDataModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
-            registry.remove(engineDataModule);
-            engineModule = new Module(engineMetadata, engineDataModule.getResources(), engineDataModule.getClasspaths(), engineReflections, x -> true);
-
-            registry.add(engineModule);
+            Set<Module> requiredModules = Sets.newHashSet();
             requiredModules.addAll(registry);
+
             loadEnvironment(requiredModules);
         } catch (Exception e) {
             e.printStackTrace();
@@ -212,12 +193,6 @@ public class AndroidModuleManager extends ModuleManager {
         permissionFactory.getBasePermissionSet().grantPermission("com.google.gson.internal", RuntimePermission.class);
 
         permissionFactory.getBasePermissionSet().grantPermission(SaveManager.class, FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.audio", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.emitters", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.fonts", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.json", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.textures", FilePermission.class);
 
         ConfigurationBuilder config = new ConfigurationBuilder().addClassLoader(ClasspathHelper.contextClassLoader())
                 .addUrls(ClasspathHelper.forClassLoader())
