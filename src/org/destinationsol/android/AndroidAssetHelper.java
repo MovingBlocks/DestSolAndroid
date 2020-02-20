@@ -21,23 +21,24 @@ import org.destinationsol.android.assets.AndroidJsonFileFormat;
 import org.destinationsol.android.assets.AndroidOggMusicFileFormat;
 import org.destinationsol.android.assets.AndroidOggSoundFileFormat;
 import org.destinationsol.assets.AssetHelper;
-import org.destinationsol.assets.audio.OggMusic;
-import org.destinationsol.assets.audio.OggSound;
 import org.destinationsol.assets.emitters.Emitter;
-import org.destinationsol.assets.fonts.Font;
-import org.destinationsol.assets.fonts.FontFileFormat;
+import org.destinationsol.assets.emitters.EmitterData;
 import org.destinationsol.assets.json.Json;
+import org.destinationsol.assets.json.JsonData;
+import org.destinationsol.assets.music.OggMusic;
+import org.destinationsol.assets.music.OggMusicData;
+import org.destinationsol.assets.sound.OggSound;
+import org.destinationsol.assets.sound.OggSoundData;
 import org.destinationsol.assets.textures.DSTexture;
+import org.destinationsol.assets.textures.DSTextureData;
 import org.terasology.gestalt.assets.Asset;
 import org.terasology.gestalt.assets.AssetData;
+import org.terasology.gestalt.assets.AssetType;
 import org.terasology.gestalt.assets.ResourceUrn;
-import org.terasology.gestalt.assets.format.AssetDataFile;
-import org.terasology.gestalt.assets.format.producer.AssetFileDataProducer;
 import org.terasology.gestalt.assets.module.ModuleAwareAssetTypeManagerImpl;
 import org.terasology.gestalt.module.ModuleEnvironment;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -46,24 +47,18 @@ public class AndroidAssetHelper extends AssetHelper {
     public void init(ModuleEnvironment environment) {
         assetTypeManager = new ModuleAwareAssetTypeManagerImpl();
 
-        assetTypeManager.createAssetType(OggSound.class, OggSound::new, "sounds");
-        ((AssetFileDataProducer)assetTypeManager.getAssetType(OggSound.class).get().getProducers().get(0)).addAssetFormat(new AndroidOggSoundFileFormat());
+        AssetType<OggSound, OggSoundData> soundType = assetTypeManager.createAssetType(OggSound.class, OggSound::new, "sounds");
+        AssetType<OggMusic, OggMusicData> musicType = assetTypeManager.createAssetType(OggMusic.class, OggMusic::new, "music");
+        AssetType<Emitter, EmitterData> emitterType = assetTypeManager.createAssetType(Emitter.class, Emitter::new, "emitters");
+        AssetType<Json, JsonData> jsonType = assetTypeManager.createAssetType(Json.class, Json::new, "collisionMeshes", "ships", "items", "configs", "grounds", "mazes", "asteroids", "schemas");
+        AssetType<DSTexture, DSTextureData> textureType = assetTypeManager.createAssetType(DSTexture.class, DSTexture::new, "textures", "ships", "items", "grounds", "mazes", "asteroids", "fonts");
 
-        assetTypeManager.createAssetType(OggMusic.class, OggMusic::new, "music");
-        ((AssetFileDataProducer)assetTypeManager.getAssetType(OggMusic.class).get().getProducers().get(0)).addAssetFormat(new AndroidOggMusicFileFormat());
-
-        assetTypeManager.createAssetType(Font.class, Font::new, "fonts");
-        ((AssetFileDataProducer)assetTypeManager.getAssetType(Font.class).get().getProducers().get(0)).addAssetFormat(new FontFileFormat());
-
-        assetTypeManager.createAssetType(Emitter.class, Emitter::new, "emitters");
-        ((AssetFileDataProducer)assetTypeManager.getAssetType(Emitter.class).get().getProducers().get(0)).addAssetFormat(new AndroidEmitterFileFormat());
-
-        assetTypeManager.createAssetType(Json.class, Json::new, "collisionMeshes", "ships", "items", "configs", "grounds", "mazes", "asteroids", "schemas");
-        ((AssetFileDataProducer)assetTypeManager.getAssetType(Json.class).get().getProducers().get(0)).addAssetFormat(new AndroidJsonFileFormat());
-
-        assetTypeManager.createAssetType(DSTexture.class, DSTexture::new, "textures", "ships", "items", "grounds", "mazes", "asteroids", "fonts");
-        ((AssetFileDataProducer)assetTypeManager.getAssetType(DSTexture.class).get().getProducers().get(0)).addAssetFormat(new AndroidDSTextureFileFormat());
-
+        assetTypeManager.getAssetFileDataProducer(soundType).addAssetFormat(new AndroidOggSoundFileFormat());
+        assetTypeManager.getAssetFileDataProducer(musicType).addAssetFormat(new AndroidOggMusicFileFormat());
+        assetTypeManager.getAssetFileDataProducer(emitterType).addAssetFormat(new AndroidEmitterFileFormat());
+        assetTypeManager.getAssetFileDataProducer(jsonType).addAssetFormat(new AndroidJsonFileFormat());
+        assetTypeManager.getAssetFileDataProducer(textureType).addAssetFormat(new AndroidDSTextureFileFormat());
+        
         assetTypeManager.switchEnvironment(environment);
     }
 
@@ -91,43 +86,5 @@ public class AndroidAssetHelper extends AssetHelper {
         }
 
         return finalList;
-    }
-
-    // TODO: This method does not work, although it may not be needed.
-    @Override
-    public String resolveToPath(List<AssetDataFile> assetDataFiles) {
-        for (AssetDataFile assetDataFile : assetDataFiles) {
-            List<String> folders = assetDataFile.getPath();
-
-            boolean validPath = true;
-            if (folders_ != null) {
-                for (int i = 0; i < folders_.length; i++) {
-                    if (!folders_[i].equals(folders.get(folders.size() - i - 1))) {
-                        validPath = false;
-                        break;
-                    }
-                }
-            }
-            if (!validPath) {
-                continue;
-            }
-
-            StringBuilder path = new StringBuilder();
-            if (!folders.get(0).equals("assets")) {
-                path.append("modules/").append(folders.get(0)).append("/");
-            } else {
-                path.append("modules/engine/assets/");
-            }
-
-            for (int i = 1; i < folders.size(); i++) {
-                path.append(folders.get(i)).append("/");
-            }
-
-            path.append(assetDataFile.getFilename());
-
-            return path.toString();
-        }
-
-        throw new RuntimeException("Could not resolve path!");
     }
 }

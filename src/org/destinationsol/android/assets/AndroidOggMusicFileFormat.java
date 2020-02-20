@@ -17,17 +17,15 @@ package org.destinationsol.android.assets;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
-import org.destinationsol.assets.audio.OggMusicData;
+import org.destinationsol.assets.music.OggMusicData;
 import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.assets.format.AbstractAssetFileFormat;
 import org.terasology.gestalt.assets.format.AssetDataFile;
-import org.terasology.gestalt.assets.module.annotations.RegisterAssetFileFormat;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-@RegisterAssetFileFormat
 public class AndroidOggMusicFileFormat extends AbstractAssetFileFormat<OggMusicData> {
     public AndroidOggMusicFileFormat() {
         super("ogg");

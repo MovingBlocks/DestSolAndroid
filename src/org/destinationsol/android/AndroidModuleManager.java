@@ -11,8 +11,8 @@ import com.google.common.io.CharStreams;
 import org.destinationsol.Const;
 import org.destinationsol.assets.AssetHelper;
 import org.destinationsol.assets.Assets;
-import org.destinationsol.assets.audio.OggMusic;
-import org.destinationsol.assets.audio.OggSound;
+import org.destinationsol.assets.music.OggMusic;
+import org.destinationsol.assets.sound.OggSound;
 import org.destinationsol.assets.emitters.Emitter;
 import org.destinationsol.assets.json.Json;
 import org.destinationsol.assets.textures.DSTexture;
@@ -221,7 +221,8 @@ public class AndroidModuleManager extends ModuleManager {
 
         permissionFactory.getBasePermissionSet().grantPermission(SaveManager.class, FilePermission.class);
         permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.audio", FilePermission.class);
+        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.music", FilePermission.class);
+        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.sound", FilePermission.class);
         permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.emitters", FilePermission.class);
         permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.fonts", FilePermission.class);
         permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.json", FilePermission.class);

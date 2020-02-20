@@ -17,19 +17,16 @@ package org.destinationsol.android.assets;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.ParticleEmitter;
-import org.destinationsol.assets.Assets;
 import org.destinationsol.assets.emitters.EmitterData;
 import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.assets.format.AbstractAssetFileFormat;
 import org.terasology.gestalt.assets.format.AssetDataFile;
-import org.terasology.gestalt.assets.module.annotations.RegisterAssetFileFormat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 
-@RegisterAssetFileFormat
 public class AndroidEmitterFileFormat extends AbstractAssetFileFormat<EmitterData> {
     public AndroidEmitterFileFormat() {
         super("emitter");
@@ -37,8 +34,6 @@ public class AndroidEmitterFileFormat extends AbstractAssetFileFormat<EmitterDat
 
     @Override
     public EmitterData load(ResourceUrn urn, List<AssetDataFile> inputs) throws IOException {
-        String path = Assets.getAssetHelper().resolveToPath(inputs);
-
         FileHandle handle = new AndroidAssetDataFileHandle(inputs.get(0));
         BufferedReader reader = new BufferedReader(new InputStreamReader(handle.read()), 512);
         ParticleEmitter particleEmitter = new ParticleEmitter(reader);
