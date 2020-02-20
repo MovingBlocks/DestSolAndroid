@@ -31,16 +31,9 @@ import org.destinationsol.assets.sound.OggSound;
 import org.destinationsol.assets.sound.OggSoundData;
 import org.destinationsol.assets.textures.DSTexture;
 import org.destinationsol.assets.textures.DSTextureData;
-import org.terasology.gestalt.assets.Asset;
-import org.terasology.gestalt.assets.AssetData;
 import org.terasology.gestalt.assets.AssetType;
-import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.assets.module.ModuleAwareAssetTypeManagerImpl;
 import org.terasology.gestalt.module.ModuleEnvironment;
-
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
 
 public class AndroidAssetHelper extends AssetHelper {
     @Override
@@ -60,31 +53,5 @@ public class AndroidAssetHelper extends AssetHelper {
         assetTypeManager.getAssetFileDataProducer(textureType).addAssetFormat(new AndroidDSTextureFileFormat());
         
         assetTypeManager.switchEnvironment(environment);
-    }
-
-    // The following three methods are overrides in order to fix the runtime errors that occur
-
-    @Override
-    public <T extends Asset<U>, U extends AssetData> Optional<T> get(ResourceUrn urn, Class<T> type) {
-        return assetTypeManager.getAssetManager().getAsset(urn, type);
-    }
-
-    @Override
-    public Set<ResourceUrn> list(Class<? extends Asset<?>> type) {
-        return assetTypeManager.getAssetManager().getAvailableAssets(type);
-    }
-
-    @Override
-    public Set<ResourceUrn> list(Class<? extends Asset<?>> type, String regex) {
-        Set<ResourceUrn> finalList = new HashSet<>();
-
-        Set<ResourceUrn> resourceList = assetTypeManager.getAssetManager().getAvailableAssets(type);
-        for (ResourceUrn resourceUrn : resourceList) {
-            if (resourceUrn.toString().matches(regex)) {
-                finalList.add(resourceUrn);
-            }
-        }
-
-        return finalList;
     }
 }
