@@ -15,22 +15,13 @@
  */
 package org.destinationsol.android;
 
-import org.destinationsol.android.assets.AndroidDSTextureFileFormat;
-import org.destinationsol.android.assets.AndroidEmitterFileFormat;
-import org.destinationsol.android.assets.AndroidJsonFileFormat;
 import org.destinationsol.android.assets.AndroidOggMusicFileFormat;
 import org.destinationsol.android.assets.AndroidOggSoundFileFormat;
 import org.destinationsol.assets.AssetHelper;
-import org.destinationsol.assets.emitters.Emitter;
-import org.destinationsol.assets.emitters.EmitterData;
-import org.destinationsol.assets.json.Json;
-import org.destinationsol.assets.json.JsonData;
 import org.destinationsol.assets.music.OggMusic;
 import org.destinationsol.assets.music.OggMusicData;
 import org.destinationsol.assets.sound.OggSound;
 import org.destinationsol.assets.sound.OggSoundData;
-import org.destinationsol.assets.textures.DSTexture;
-import org.destinationsol.assets.textures.DSTextureData;
 import org.terasology.gestalt.assets.AssetType;
 import org.terasology.gestalt.assets.module.ModuleAwareAssetTypeManagerImpl;
 import org.terasology.gestalt.module.ModuleEnvironment;
@@ -42,15 +33,9 @@ public class AndroidAssetHelper extends AssetHelper {
 
         AssetType<OggSound, OggSoundData> soundType = assetTypeManager.createAssetType(OggSound.class, OggSound::new, "sounds");
         AssetType<OggMusic, OggMusicData> musicType = assetTypeManager.createAssetType(OggMusic.class, OggMusic::new, "music");
-        AssetType<Emitter, EmitterData> emitterType = assetTypeManager.createAssetType(Emitter.class, Emitter::new, "emitters");
-        AssetType<Json, JsonData> jsonType = assetTypeManager.createAssetType(Json.class, Json::new, "collisionMeshes", "ships", "items", "configs", "grounds", "mazes", "asteroids", "schemas");
-        AssetType<DSTexture, DSTextureData> textureType = assetTypeManager.createAssetType(DSTexture.class, DSTexture::new, "textures", "ships", "items", "grounds", "mazes", "asteroids", "fonts");
 
         assetTypeManager.getAssetFileDataProducer(soundType).addAssetFormat(new AndroidOggSoundFileFormat());
         assetTypeManager.getAssetFileDataProducer(musicType).addAssetFormat(new AndroidOggMusicFileFormat());
-        assetTypeManager.getAssetFileDataProducer(emitterType).addAssetFormat(new AndroidEmitterFileFormat());
-        assetTypeManager.getAssetFileDataProducer(jsonType).addAssetFormat(new AndroidJsonFileFormat());
-        assetTypeManager.getAssetFileDataProducer(textureType).addAssetFormat(new AndroidDSTextureFileFormat());
         
         assetTypeManager.switchEnvironment(environment);
     }
