@@ -220,9 +220,6 @@ public class AndroidModuleManager extends ModuleManager {
         //System.setSecurityManager(new ModuleSecurityManager());
 
         environment = new ModuleEnvironment(registry, permissionFactory, (module, parent, permissionProvider) -> AndroidModuleClassLoader.create(module, parent, permissionProvider, context.getCodeCacheDir()));
-        AssetHelper helper = new AndroidAssetHelper();
-        helper.init(environment);
-        Assets.initialize(helper);
     }
 
     public void printAvailableModules() {
