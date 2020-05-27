@@ -207,7 +207,7 @@ task copyModules() {
         }
 
         copy {
-            from "$rootDir/engine/src/main/resources"
+            from "$rootDir/engine/src/main/resources/org/destinationsol"
             into "$projectDir/assets/modules/engine"
             include "assets/**"
             include "module.json"

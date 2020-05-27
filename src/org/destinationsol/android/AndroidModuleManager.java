@@ -5,31 +5,24 @@ import android.content.res.AssetManager;
 import android.util.Log;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Sets;
-import com.google.common.collect.Queues;
 import com.google.common.io.ByteStreams;
-import com.google.common.io.CharStreams;
 import org.destinationsol.Const;
 import org.destinationsol.assets.AssetHelper;
 import org.destinationsol.assets.Assets;
-import org.destinationsol.assets.audio.OggMusic;
-import org.destinationsol.assets.audio.OggSound;
+import org.destinationsol.assets.music.OggMusic;
+import org.destinationsol.assets.sound.OggSound;
 import org.destinationsol.assets.emitters.Emitter;
 import org.destinationsol.assets.json.Json;
 import org.destinationsol.assets.textures.DSTexture;
-import org.destinationsol.game.SaveManager;
-import org.destinationsol.modules.DestinationSolModuleFactory;
 import org.destinationsol.modules.ModuleManager;
 import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.module.Module;
 import org.terasology.gestalt.module.ModuleEnvironment;
-import org.terasology.gestalt.module.ModuleFactory;
 import org.terasology.gestalt.module.ModuleMetadata;
 import org.terasology.gestalt.module.ModuleMetadataJsonAdapter;
 import org.terasology.gestalt.module.ModulePathScanner;
 import org.terasology.gestalt.module.TableModuleRegistry;
 import org.terasology.gestalt.module.sandbox.APIScanner;
-import org.terasology.gestalt.module.sandbox.ModuleSecurityManager;
-import org.terasology.gestalt.module.sandbox.ModuleSecurityPolicy;
 import org.terasology.gestalt.module.sandbox.StandardPermissionProviderFactory;
 import org.terasology.gestalt.android.AndroidModuleClassLoader;
 
@@ -43,17 +36,13 @@ import org.terasology.gestalt.naming.Version;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FilePermission;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.lang.reflect.ReflectPermission;
-import java.security.Policy;
-import java.util.Locale;
 import java.util.Set;
 
 public class AndroidModuleManager extends ModuleManager {
@@ -73,7 +62,6 @@ public class AndroidModuleManager extends ModuleManager {
             Reader engineModuleReader = new InputStreamReader(assets.open("modules/engine/module.json"), Charsets.UTF_8);
             ModuleMetadata engineMetadata = new ModuleMetadataJsonAdapter().read(engineModuleReader);
             engineModuleReader.close();
-            ModuleFactory moduleFactory = new DestinationSolModuleFactory();
 
             registry = new TableModuleRegistry();
             Set<Module> requiredModules = Sets.newHashSet();
@@ -81,7 +69,7 @@ public class AndroidModuleManager extends ModuleManager {
             // The "assets" directory only exists within the APK, which makes it inefficient to traverse
             copyModulesToDataDir(filesPath, assets);
 
-            ModulePathScanner scanner = new ModulePathScanner(moduleFactory);
+            ModulePathScanner scanner = new ModulePathScanner();
             scanner.scan(registry, new File(filesPath, "modules"));
 
             InputStream engineReflectionsStream = assets.open("modules/engine/reflections.cache");
@@ -219,14 +207,6 @@ public class AndroidModuleManager extends ModuleManager {
         permissionFactory.getBasePermissionSet().grantPermission("com.google.gson", RuntimePermission.class);
         permissionFactory.getBasePermissionSet().grantPermission("com.google.gson.internal", RuntimePermission.class);
 
-        permissionFactory.getBasePermissionSet().grantPermission(SaveManager.class, FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.audio", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.emitters", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.fonts", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.json", FilePermission.class);
-        permissionFactory.getBasePermissionSet().grantPermission("org.destinationsol.assets.textures", FilePermission.class);
-
         ConfigurationBuilder config = new ConfigurationBuilder().addClassLoader(ClasspathHelper.contextClassLoader())
                 .addUrls(ClasspathHelper.forClassLoader())
                 .addScanners(new TypeAnnotationsScanner(), new SubTypesScanner());
@@ -240,9 +220,6 @@ public class AndroidModuleManager extends ModuleManager {
         //System.setSecurityManager(new ModuleSecurityManager());
 
         environment = new ModuleEnvironment(registry, permissionFactory, (module, parent, permissionProvider) -> AndroidModuleClassLoader.create(module, parent, permissionProvider, context.getCodeCacheDir()));
-        AssetHelper helper = new AndroidAssetHelper();
-        helper.init(environment);
-        Assets.initialize(helper);
     }
 
     public void printAvailableModules() {
