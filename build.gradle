@@ -40,6 +40,9 @@ repositories {
     // everit-org JSON schema dependency
     maven { url "https://jitpack.io" }
 
+    // Needed for Jsemver, which is a gestalt dependency
+    maven { url = 'https://heisluft.tk/maven/' }
+
     maven { url "https://maven.google.com" }
 }
 
@@ -59,8 +62,15 @@ dependencies {
     implementation 'com.googlecode.gentyref:gentyref:1.2.0'
     compile(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
 
-    compile(project(":engine"))
-    compile(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.0.3', ext: 'aar')
+    compile(project(":engine")) {
+        // Resolves duplicate class errors
+        exclude group: "org.reflections"
+        // The default JOML package doesn't compile with the Android tooling, so we use a jdk3 variant
+        exclude group: "org.joml"
+    }
+    // Android-compatible JOML variant
+    implementation "org.joml:joml-jdk3:1.9.25"
+    compile(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.0.6-SNAPSHOT', ext: 'aar')
 
     compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
