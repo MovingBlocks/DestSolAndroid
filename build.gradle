@@ -9,10 +9,13 @@ buildscript {
     repositories {
         mavenLocal()
         mavenCentral()
+
+        // Needed for the Android Gradle Plugin to work
         google()
+        jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath 'com.android.tools.build:gradle:4.0.2'
     }
 }
 
@@ -55,14 +58,14 @@ dependencies {
     api 'com.google.guava:guava:27.0.1-android'
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'org.apache.commons:commons-vfs2:2.2'
-    compile group: 'com.android.support', name: 'support-annotations', version: '28.0.0'
+    implementation group: 'com.android.support', name: 'support-annotations', version: '28.0.0'
     implementation 'net.jcip:jcip-annotations:1.0'
     implementation 'net.sf.trove4j:trove4j:3.0.3'
     implementation 'com.google.protobuf:protobuf-java:3.4.0'
     implementation 'com.googlecode.gentyref:gentyref:1.2.0'
     compile(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
 
-    compile(project(":engine")) {
+    implementation(project(":engine")) {
         // Resolves duplicate class errors
         exclude group: "org.reflections"
         // The default JOML package doesn't compile with the Android tooling, so we use a jdk3 variant
@@ -70,13 +73,16 @@ dependencies {
     }
     // Android-compatible JOML variant
     implementation "org.joml:joml-jdk3:1.9.25"
-    compile(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.0.6-SNAPSHOT', ext: 'aar')
+    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.0.6-SNAPSHOT', ext: 'aar')
+    // TODO: Needed for gestalt because of an internal dependency but since that dependency is never
+    //       exposed in a public API, I have no idea why it's needed for compilation.
+    implementation "com.github.zafarkhaja:java-semver:0.10.0"
 
-    compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
-    compile "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
@@ -195,7 +201,7 @@ def deleteDir(File dir) {
 
 task copyModules() {
     inputs.dir("$rootDir/engine/src/main/resources/")
-    inputs.dir("$rootDir/assets/")
+    inputs.dir("$projectDir/assets")
     dependsOn ":engine:cacheReflections"
 
     doLast {
@@ -224,7 +230,7 @@ task copyModules() {
         }
 
         copy {
-            from "$rootDir/engine/build/classes/java/main"
+            from "$rootDir/engine/build/classes"
             into "$projectDir/assets/modules/engine"
             include "reflections.cache"
         }
@@ -238,7 +244,10 @@ rootProject.destinationSolModules().each { module ->
 
 task reflectModules() {
     for (module in rootProject.destinationSolModules()) {
-        inputs.dir("${rootProject.projectDir}/modules/${module.name}/build/classes")
+        def moduleClassesDir = "${rootProject.projectDir}/modules/${module.name}/build/classes"
+        if (file(moduleClassesDir).exists()) {
+            inputs.dir(moduleClassesDir)
+        }
     }
 
     dependsOn modulesCompile
@@ -340,37 +349,6 @@ task android(type: Exec) {
     def path = androidSdkPath()
     def adb = path + "/platform-tools/adb"
     commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.miloshpetrov.sol2.android/com.miloshpetrov.sol2.android.SolAndroid'
-}
-
-// sets up the Android Eclipse project, using the old Ant based build.
-eclipse {
-    // need to specify Java source sets explicitly, SpringSource Gradle Eclipse plugin
-    // ignores any nodes added in classpath.file.withXml
-    sourceSets {
-        main {
-            java.srcDirs "src", 'gen'
-        }
-    }
-
-    jdt {
-        sourceCompatibility = 1.8
-        targetCompatibility = 1.8
-    }
-
-    classpath {
-        plusConfigurations += [ project.configurations.compile ]        
-        containers 'com.android.ide.eclipse.adt.ANDROID_FRAMEWORK', 'com.android.ide.eclipse.adt.LIBRARIES'       
-    }
-
-    project {
-        name = appName + "-android"
-        natures 'com.android.ide.eclipse.adt.AndroidNature'
-        buildCommands.clear();
-        buildCommand "com.android.ide.eclipse.adt.ResourceManagerBuilder"
-        buildCommand "com.android.ide.eclipse.adt.PreCompilerBuilder"
-        buildCommand "org.eclipse.jdt.core.javabuilder"
-        buildCommand "com.android.ide.eclipse.adt.ApkBuilder"
-    }
 }
 
 // sets up the Android Idea project, using the old Ant based build.
