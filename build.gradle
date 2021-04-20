@@ -12,10 +12,9 @@ buildscript {
 
         // Needed for the Android Gradle Plugin to work
         google()
-        jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.0.2'
+        classpath 'com.android.tools.build:gradle:4.1.3'
     }
 }
 
@@ -118,7 +117,7 @@ ext {
 }
 
 android {
-    compileSdkVersion(compileSdk)
+    compileSdkVersion(project.ext.compileSdk)
 
     // Make it clear we're compiling for Java 8
     compileOptions {
@@ -142,17 +141,17 @@ android {
     }
 
     defaultConfig {
-        targetSdkVersion(targetSdk)
-        minSdkVersion(minSdk)
+        targetSdkVersion(project.ext.targetSdk)
+        minSdkVersion(project.ext.minSdk)
         multiDexEnabled true
     }
 
     signingConfigs {
         release {
-            storeFile file(keyStoreToUse)
-            storePassword storePassToUse
-            keyAlias keyAliasToUse
-            keyPassword keyPassToUse
+            storeFile file(project.ext.keyStoreToUse)
+            storePassword project.ext.storePassToUse
+            keyAlias project.ext.keyAliasToUse
+            keyPassword project.ext.keyPassToUse
         }
     }
 
