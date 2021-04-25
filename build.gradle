@@ -27,8 +27,6 @@ repositories {
     // Good ole Maven central
     mavenCentral()
 
-    jcenter()
-
     // For the Android libraries
     google()
 
