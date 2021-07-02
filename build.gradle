@@ -85,6 +85,9 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
+
+    // Android-compatible logging
+    implementation group: 'org.slf4j', name: 'slf4j-android', version: '1.7.25'
 }
 
 ext {
