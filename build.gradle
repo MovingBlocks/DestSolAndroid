@@ -71,7 +71,7 @@ dependencies {
     }
     // Android-compatible JOML variant
     implementation "org.joml:joml-jdk3:1.9.25"
-    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.2.0-SNAPSHOT')
+    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: gestaltVersion)
     // TODO: Needed for gestalt because of an internal dependency but since that dependency is never
     //       exposed in a public API, I have no idea why it's needed for compilation.
     implementation "com.github.zafarkhaja:java-semver:0.10.0"
@@ -89,8 +89,14 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86_64"
 
+    // Add reflections purely for NUI. NUI uses the ReflectionUtils class from it.
+    implementation "org.terasology:reflections:0.9.12-MB"
+
     // Android-compatible logging
     implementation group: 'org.slf4j', name: 'slf4j-android', version: '1.7.25'
+
+    // Backport some Java 8 APIs like java.time for gestalt
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 }
 
 ext {
@@ -127,6 +133,9 @@ android {
 
     // Make it clear we're compiling for Java 8
     compileOptions {
+        // Backport some Java 8 APIs like java.time for gestalt
+        coreLibraryDesugaringEnabled true
+
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -151,6 +160,15 @@ android {
 
     lintOptions {
         abortOnError false
+    }
+
+    packagingOptions {
+        merge 'META-INF/annotations/*'
+        merge 'META-INF/subtypes/*'
+        merge 'META-INF/services/*'
+
+        // The contents of the "gestalt-indexes-present" file is never read, so just pick any one of them
+        pickFirst 'META-INF/gestalt-indexes-present'
     }
 
     defaultConfig {
@@ -215,11 +233,6 @@ def deleteDir(File dir) {
     dir.delete()
 }
 
-task modulesReflections
-rootProject.destinationSolModules().each { module ->
-    modulesReflections.dependsOn ":modules:$module.name" + ":cacheReflections"
-}
-
 task exportModules() {
     inputs.dir("$rootDir/engine/src/main/resources/")
     for (module in rootProject.destinationSolModules()) {
@@ -232,9 +245,6 @@ task exportModules() {
     }
 
     outputs.dir("$projectDir/assets/modules")
-
-    dependsOn ":engine:cacheReflections"
-    dependsOn modulesReflections
 
     doLast {
         dexModules()

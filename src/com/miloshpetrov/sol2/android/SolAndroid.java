@@ -10,8 +10,11 @@ import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import org.destinationsol.Const;
 import org.destinationsol.SolApplication;
-import org.destinationsol.modules.ModuleManager;
+import org.destinationsol.modules.FacadeModuleConfig;
+import org.terasology.context.Lifetime;
 import org.terasology.gestalt.android.AndroidModuleClassLoader;
+import org.terasology.gestalt.di.ServiceRegistry;
+import org.terasology.gestalt.module.ModuleEnvironment;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,19 +33,8 @@ public class SolAndroid extends AndroidApplication {
         File filesDir = getFilesDir();
         copyModulesToDataDir(filesDir);
 
-        // Android does not allow changing the system security policy.
-        // Modules should still be restricted via classpath filtering though.
-        ModuleManager manager = new ModuleManager(new File(filesDir, "modules"), false,
-                (module, parent, permissionProvider) -> AndroidModuleClassLoader.create(module, parent, permissionProvider, getCodeCacheDir()));
-
         try {
-            manager.init();
-        } catch (Exception e) {
-            Log.e("DESTINATION_SOL_INIT", "Failed to initialise ModuleManager.");
-        }
-
-        try {
-            initialize(new SolApplication(manager, 60.0f), config);
+            initialize(new SolApplication(60.0f, new AndroidServices(filesDir, getCodeCacheDir())), config);
         } catch (Exception e) {
             Log.e("DESTINATION_SOL", "FATAL ERROR: Forced abort!", e);
         }
@@ -147,6 +139,44 @@ public class SolAndroid extends AndroidApplication {
         } catch (IOException e) {
             Log.e("DESTINATION_SOL", "", e);
             e.printStackTrace();
+        }
+    }
+
+    private static class AndroidServices extends ServiceRegistry {
+        public AndroidServices(File filesDir, File codeCacheDir) {
+            this.with(FacadeModuleConfig.class).lifetime(Lifetime.Singleton).use(() -> new AndroidModuleConfig(filesDir, codeCacheDir));
+        }
+    }
+
+    private static class AndroidModuleConfig implements FacadeModuleConfig {
+        private final File filesDir;
+        private final File codeCacheDir;
+
+        public AndroidModuleConfig(File filesDir, File codeCacheDir) {
+            this.filesDir = filesDir;
+            this.codeCacheDir = codeCacheDir;
+        }
+
+        @Override
+        public File getModulesPath() {
+            return new File(filesDir, "modules");
+        }
+
+        // Android does not allow changing the system security policy.
+        // Modules should still be restricted via classpath filtering though.
+        @Override
+        public boolean useSecurityManager() {
+            return false;
+        }
+
+        @Override
+        public ModuleEnvironment.ClassLoaderSupplier getClassLoaderSupplier() {
+            return (module, parent, permissionProvider) -> AndroidModuleClassLoader.create(module, parent, permissionProvider, codeCacheDir);
+        }
+
+        @Override
+        public Class<?>[] getAPIClasses() {
+            return new Class<?>[0];
         }
     }
 }
