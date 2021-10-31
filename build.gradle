@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.nio.file.Paths
 
 buildscript {
     repositories {
@@ -70,7 +71,7 @@ dependencies {
     }
     // Android-compatible JOML variant
     implementation "org.joml:joml-jdk3:1.9.25"
-    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.0.6-SNAPSHOT', ext: 'aar')
+    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.2.0-SNAPSHOT')
     // TODO: Needed for gestalt because of an internal dependency but since that dependency is never
     //       exposed in a public API, I have no idea why it's needed for compilation.
     implementation "com.github.zafarkhaja:java-semver:0.10.0"
@@ -141,6 +142,13 @@ android {
             jniLibs.srcDirs = ['libs']
         }
     }
+
+    packagingOptions {
+        exclude 'org/destinationsol/module.json'
+        exclude 'org/destinationsol/reflections.cache'
+        exclude 'org/destinationsol/assets/**'
+    }
+
     lintOptions {
         abortOnError false
     }
@@ -205,9 +213,9 @@ def deleteDir(File dir) {
     dir.delete()
 }
 
-task modulesJar
+task modulesReflections
 rootProject.destinationSolModules().each { module ->
-    modulesJar.dependsOn ":modules:$module.name" + ":jar"
+    modulesReflections.dependsOn ":modules:$module.name" + ":cacheReflections"
 }
 
 task exportModules() {
@@ -224,35 +232,59 @@ task exportModules() {
     outputs.dir("$projectDir/assets/modules")
 
     dependsOn ":engine:cacheReflections"
-    dependsOn modulesJar
+    dependsOn modulesReflections
 
     doLast {
+        dexModules()
+
         // Clear the modules directory to ensure that it is up-to date
         deleteDir(new File("$projectDir/assets", "modules"))
 
-        copy {
-            into "$projectDir/assets/modules"
+        boolean canCreateSymlinks
+
+        try {
+            Files.createSymbolicLink(Paths.get("$projectDir/assets/engine"), Paths.get("$rootDir/engine/build/resources/main/org/destinationsol"))
+            canCreateSymlinks = true
+        } catch (Exception ignore) {
+            // Copy the files instead
+            canCreateSymlinks = false
+        }
+
+        if (canCreateSymlinks) {
             rootProject.destinationSolModules().each { module ->
-                from("$rootDir/modules/${module.name}/build/libs") {
-                    include "*.jar"
+                file("$projectDir/assets/modules/${module.name}").mkdir()
+                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/assets"), Paths.get("$rootDir/modules/${module.name}/assets"))
+                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/overrides"), Paths.get("$rootDir/modules/${module.name}/overrides"))
+                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/deltas"), Paths.get("$rootDir/modules/${module.name}/deltas"))
+                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/module.json"), Paths.get("$rootDir/modules/${module.name}/module.json"))
+
+                file("$projectDir/assets/modules/${module.name}/build/classes").mkdirs()
+                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/classes/reflections.cache"), Paths.get("$rootDir/modules/${module.name}/build/classes/reflections.cache"))
+                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/dexes"), Paths.get("$rootDir/modules/${module.name}/build/dexes"))
+            }
+        } else {
+            copy {
+                from "$rootDir/engine/build/resources/main/org/destinationsol"
+                into "$projectDir/assets/engine"
+                include "assets/**"
+                include "module.json"
+                include "reflections.cache"
+            }
+
+            copy {
+                into "$projectDir/assets/modules"
+                from("$rootDir/modules") {
+                    rootProject.destinationSolModules().each { module ->
+                        include "${module.name}/module.json"
+                        include "${module.name}/assets/**"
+                        include "${module.name}/overrides/**"
+                        include "${module.name}/deltas/**"
+                        include "${module.name}/build/dexes/*.dex"
+                        include "${module.name}/build/classes/reflections.cache"
+                    }
                 }
             }
         }
-
-        copy {
-            from "$rootDir/engine/src/main/resources/org/destinationsol"
-            into "$projectDir/assets/modules/engine"
-            include "assets/**"
-            include "module.json"
-        }
-
-        copy {
-            from "$rootDir/engine/build/classes"
-            into "$projectDir/assets/modules/engine"
-            include "reflections.cache"
-        }
-
-        dexModules()
     }
 }
 
@@ -295,22 +327,6 @@ def dexModules() {
                                                      '--lib', "$path/platforms/android-$compileSdk/android.jar",
                                                      '--min-api', "$minSdk",
                                                      '--output', "$moduleDexesDir"])
-        }
-
-        def moduleDexesFiles = fileTree(moduleDexesDir).filter { it.isFile() && it.name.endsWith('.dex')}.files
-        def jarOutputDir = "$projectDir/assets/modules/${module.name}-${module.version}.jar"
-        FileSystem jarFileSystem
-        try {
-            jarFileSystem = FileSystems.newFileSystem(URI.create("jar:" + new File(jarOutputDir).toURI()), new HashMap<String, Object>())
-            moduleDexesFiles.each {
-                Files.copy(it.toPath(), jarFileSystem.getPath("/${it.name}"))
-            }
-        } catch (Exception e) {
-            e.printStackTrace()
-        } finally {
-            if (jarFileSystem != null) {
-                jarFileSystem.close()
-            }
         }
     }
 }

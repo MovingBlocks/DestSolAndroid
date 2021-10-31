@@ -3,10 +3,8 @@ package org.destinationsol.android;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
-import com.google.common.base.Charsets;
 import com.google.common.collect.Sets;
-import com.google.common.io.ByteStreams;
-import org.destinationsol.Const;
+import com.google.common.reflect.Reflection;
 import org.destinationsol.assets.AssetHelper;
 import org.destinationsol.assets.Assets;
 import org.destinationsol.assets.music.OggMusic;
@@ -15,16 +13,20 @@ import org.destinationsol.assets.emitters.Emitter;
 import org.destinationsol.assets.json.Json;
 import org.destinationsol.assets.textures.DSTexture;
 import org.destinationsol.modules.ModuleManager;
+import org.reflections.serializers.XmlSerializer;
+import org.terasology.gestalt.android.AndroidAssetsFileSource;
+import org.terasology.gestalt.android.AndroidModuleClassLoader;
+import org.terasology.gestalt.android.AndroidModulePathScanner;
 import org.terasology.gestalt.assets.ResourceUrn;
 import org.terasology.gestalt.module.Module;
 import org.terasology.gestalt.module.ModuleEnvironment;
+import org.terasology.gestalt.module.ModuleFactory;
 import org.terasology.gestalt.module.ModuleMetadata;
 import org.terasology.gestalt.module.ModuleMetadataJsonAdapter;
-import org.terasology.gestalt.module.ModulePathScanner;
 import org.terasology.gestalt.module.TableModuleRegistry;
+import org.terasology.gestalt.module.resources.EmptyFileSource;
 import org.terasology.gestalt.module.sandbox.APIScanner;
 import org.terasology.gestalt.module.sandbox.StandardPermissionProviderFactory;
-import org.terasology.gestalt.android.AndroidModuleClassLoader;
 
 import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
@@ -35,19 +37,14 @@ import org.terasology.gestalt.naming.Name;
 import org.terasology.gestalt.naming.Version;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.Reader;
 import java.lang.reflect.ReflectPermission;
+import java.util.Collections;
 import java.util.Set;
 
 public class AndroidModuleManager extends ModuleManager {
     private Context context;
-    private Module engineCodeModule;
 
     public AndroidModuleManager(Context context) {
         this.context = context;
@@ -56,137 +53,42 @@ public class AndroidModuleManager extends ModuleManager {
     @Override
     public void init() throws Exception {
         File filesPath = context.getFilesDir();
+        File moduleDexesPath = context.getCodeCacheDir();
         AssetManager assets = context.getAssets();
 
         try {
-            Reader engineModuleReader = new InputStreamReader(assets.open("modules/engine/module.json"), Charsets.UTF_8);
-            ModuleMetadata engineMetadata = new ModuleMetadataJsonAdapter().read(engineModuleReader);
-            engineModuleReader.close();
+            ModuleFactory moduleFactory = new ModuleFactory();
+            moduleFactory.setManifestFileType("reflections.cache", new XmlSerializer());
+            ModuleMetadataJsonAdapter metadataJsonAdapter = new ModuleMetadataJsonAdapter();
+            InputStream engineModuleMetadataStream = assets.open("engine/module.json");
+            engineModule = new Module(metadataJsonAdapter.read(new InputStreamReader(engineModuleMetadataStream)),
+                    new AndroidAssetsFileSource(assets, "engine"),
+                    Collections.emptyList(), new Reflections().collect(assets.open("engine/reflections.cache")), x -> {
+                String classPackageName = Reflection.getPackageName(x);
+                return "org.destinationsol".equals(classPackageName) || classPackageName.startsWith("org.destinationsol.");
+            });
+            // In order for the NUI widgets to be detected, they first need to be found and cached. The build script
+            // reflects over the NUI jar and saves a list of all the widgets within the engine's reflections.cache.
+            // TODO: Find a better way to do this.
+            Module nuiModule = new Module(new ModuleMetadata(new Name("nui"), new Version("2.0.0")), new EmptyFileSource(),
+                    Collections.emptyList(), new Reflections("org.terasology.nui"), x -> {
+                String classPackageName = Reflection.getPackageName(x);
+                return "org.terasology.nui".equals(classPackageName) || classPackageName.startsWith("org.terasology.nui.");
+            });
 
             registry = new TableModuleRegistry();
+            registry.add(engineModule);
+            registry.add(nuiModule);
             Set<Module> requiredModules = Sets.newHashSet();
 
-            // The "assets" directory only exists within the APK, which makes it inefficient to traverse
-            copyModulesToDataDir(filesPath, assets);
+            AndroidModulePathScanner scanner = new AndroidModulePathScanner(assets, moduleDexesPath);
+            scanner.scan(registry, new File("modules"));
 
-            ModulePathScanner scanner = new ModulePathScanner();
-            scanner.scan(registry, new File(filesPath, "modules"));
-
-            InputStream engineReflectionsStream = assets.open("modules/engine/reflections.cache");
-            Reflections engineReflections = new ConfigurationBuilder().getSerializer().read(engineReflectionsStream);
-            engineReflectionsStream.close();
-
-            Module engineDataModule = registry.getModule(new Name("engine"), new Version(Const.VERSION));
-            registry.remove(engineDataModule);
-            engineModule = new Module(engineMetadata, engineDataModule.getResources(), engineDataModule.getClasspaths(), engineReflections, x -> true);
-
-            registry.add(engineModule);
             requiredModules.addAll(registry);
             loadEnvironment(requiredModules);
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
-        }
-    }
-
-    private void clearCachedModules(File modulesDir) {
-        File[] files = modulesDir.listFiles();
-        if (files != null) {
-            for (File file : modulesDir.listFiles()) {
-                clearCachedModules(file);
-            }
-        }
-
-        modulesDir.delete();
-    }
-
-    private void copyModulesToDataDir(File dataDir, AssetManager assets) {
-        File assetVersionFile = new File(dataDir, "version.txt");
-        String versionString = "";
-        if (assetVersionFile.exists()) {
-            try (FileInputStream inputStream = new FileInputStream(assetVersionFile)) {
-                try (InputStreamReader streamReader = new InputStreamReader(inputStream, Charsets.UTF_8)) {
-                    StringBuilder builder = new StringBuilder();
-                    char[] buffer = new char[32];
-                    while (streamReader.read(buffer) != -1) {
-                        builder.append(buffer);
-                    }
-                    versionString = builder.toString();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        boolean refreshCache = (!versionString.equals(Const.VERSION) || com.miloshpetrov.sol2.android.BuildConfig.DEBUG);
-
-        if (refreshCache) {
-            try (FileOutputStream stream = new FileOutputStream(assetVersionFile)) {
-                try (OutputStreamWriter writer = new OutputStreamWriter(stream)) {
-                    writer.write(Const.VERSION);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            clearCachedModules(new File(dataDir, "modules"));
-        }
-
-        copyModules(dataDir, assets, "modules", refreshCache);
-
-        File musicFolder = new File(dataDir, "music");
-        File soundFolder = new File(dataDir, "sound");
-        if (!musicFolder.exists()) {
-            musicFolder.mkdir();
-        }
-
-        if (!soundFolder.exists()) {
-            soundFolder.mkdir();
-        }
-    }
-
-    private void copyModules(File dataDir, AssetManager assets, String rootDir, boolean replaceFiles) {
-        try {
-            String[] filesToCopy = assets.list(rootDir);
-            for (String fileToCopy : filesToCopy) {
-                String filePath = rootDir + "/" + fileToCopy;
-                File file = new File(dataDir + "/" + rootDir, fileToCopy);
-                file.mkdirs();
-                if (assets.list(filePath).length > 0) {
-                    // File is a directory
-                    if (!file.exists()) {
-                        file.mkdirs();
-                    }
-                    copyModules(dataDir, assets, filePath, replaceFiles);
-                } else {
-                    if (file.exists() && replaceFiles) {
-                        // Replace old copies with newer ones
-                        file.delete();
-                    }
-
-                    file.createNewFile();
-
-                    byte[] buffer = new byte[512];
-                    try (InputStream inputStream = assets.open(filePath)) {
-                        try (FileOutputStream outputStream = new FileOutputStream(file)) {
-                            ByteStreams.copy(inputStream, outputStream);
-                        } catch (Exception e) {
-                            Log.e("DESTINATION_SOL", "", e);
-                            e.printStackTrace();
-                        }
-                    } catch (IOException e) {
-                        Log.e("DESTINATION_SOL", "", e);
-                        e.printStackTrace();
-                    }
-                }
-            }
-        } catch (IOException e) {
-            Log.e("DESTINATION_SOL", "", e);
-            e.printStackTrace();
         }
     }
 
@@ -211,8 +113,11 @@ public class AndroidModuleManager extends ModuleManager {
                 .addUrls(ClasspathHelper.forClassLoader())
                 .addScanners(new TypeAnnotationsScanner(), new SubTypesScanner());
         Reflections reflections = new Reflections(config);
+        for (Module module : registry) {
+            reflections.merge(module.getModuleManifest());
+        }
 
-        APIScanner scanner = new APIScanner(permissionFactory);
+        APIScanner scanner = new APIScanner(permissionFactory, getClass().getClassLoader());
         scanner.scan(reflections);
 
         // TODO: Android does not appear to allow changing the system security policy. Modules will run without a sandbox (though Android's sandbox should be enough).
