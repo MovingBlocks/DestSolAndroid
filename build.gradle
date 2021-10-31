@@ -262,12 +262,17 @@ def dexModules() {
     def buildToolsVersions = new File(path, "build-tools").listFiles(new FileFilter() {
         @Override
         boolean accept(File file) {
-            return file.isDirectory() && file.name.startsWith("$compileSdk.")
+            String[] versionParts = file.name.split('\\.');
+            if (versionParts.length < 3) {
+                // This is not an SDK build-tools directory
+                return false;
+            }
+            return file.isDirectory() && Integer.parseInt(versionParts[0]) >= compileSdk
         }
     })
 
     if (buildToolsVersions.length == 0) {
-        throw new TaskExecutionException(reflectModules, new FileNotFoundException("The Android SDK build tools version $compileSdk could not be found."))
+        throw new TaskExecutionException(exportModules, new FileNotFoundException("An Android SDK build tools version >= $compileSdk could not be found."))
     }
     def dex = "${buildToolsVersions[0]}/$dexCommand"
     for (module in rootProject.destinationSolModules()) {
