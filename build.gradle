@@ -203,10 +203,12 @@ task copyAndroidNatives() {
 }
 
 def deleteDir(File dir) {
-    File[] files = dir.listFiles()
-    if (files != null) {
-        for (File file in files) {
-            deleteDir(file)
+    if (!Files.isSymbolicLink(dir.toPath())) {
+        File[] files = dir.listFiles()
+        if (files != null) {
+            for (File file in files) {
+                deleteDir(file)
+            }
         }
     }
 
@@ -238,7 +240,9 @@ task exportModules() {
         dexModules()
 
         // Clear the modules directory to ensure that it is up-to date
-        deleteDir(new File("$projectDir/assets", "modules"))
+        def assetsModulesDir = new File("$projectDir/assets", "modules")
+        deleteDir(assetsModulesDir)
+        assetsModulesDir.mkdir()
 
         boolean canCreateSymlinks
 
