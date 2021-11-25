@@ -233,6 +233,12 @@ def deleteDir(File dir) {
     dir.delete()
 }
 
+task modulesCompile {
+    for (module in rootProject.destinationSolModules()) {
+        dependsOn ":modules:${module.name}:compileJava"
+    }
+}
+
 task exportModules() {
     inputs.dir("$rootDir/engine/src/main/resources/")
     for (module in rootProject.destinationSolModules()) {
@@ -245,6 +251,8 @@ task exportModules() {
     }
 
     outputs.dir("$projectDir/assets/modules")
+
+    dependsOn modulesCompile
 
     doLast {
         dexModules()
@@ -273,7 +281,6 @@ task exportModules() {
                 Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/module.json"), Paths.get("$rootDir/modules/${module.name}/module.json"))
 
                 file("$projectDir/assets/modules/${module.name}/build/classes").mkdirs()
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/classes/reflections.cache"), Paths.get("$rootDir/modules/${module.name}/build/classes/reflections.cache"))
                 Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/dexes"), Paths.get("$rootDir/modules/${module.name}/build/dexes"))
             }
         } else {
@@ -293,8 +300,7 @@ task exportModules() {
                         include "${module.name}/assets/**"
                         include "${module.name}/overrides/**"
                         include "${module.name}/deltas/**"
-                        include "${module.name}/build/dexes/*.dex"
-                        include "${module.name}/build/classes/reflections.cache"
+                        include "${module.name}/build/dexes/*.jar"
                     }
                 }
             }
@@ -322,9 +328,9 @@ def dexModules() {
     }
     def dex = "${buildToolsVersions[0]}/$dexCommand"
     for (module in rootProject.destinationSolModules()) {
-        def moduleClassesDir = "${rootProject.projectDir}/modules/${module.name}/build/classes/"
+        def moduleClassesDir = file("${rootProject.projectDir}/modules/${module.name}/build/classes/")
         def moduleClassesFiles = fileTree(moduleClassesDir).filter { it.isFile() && it.name.endsWith('.class')}.files
-        def classesRootPath = new File(moduleClassesDir).toPath()
+        def classesRootPath = moduleClassesDir.toPath()
         def moduleClasses = []
         for (file in moduleClassesFiles) {
             moduleClasses.add(classesRootPath.relativize(file.toPath()))
@@ -335,12 +341,30 @@ def dexModules() {
         }
         def moduleDexesDir = "${rootProject.projectDir}/modules/${module.name}/build/dexes/"
         mkdir(moduleDexesDir)
+        def jarOutputPath = "$moduleDexesDir/${module.name}.jar"
         exec {
             workingDir moduleClassesDir
             commandLine (["$dex"] + moduleClasses + ['--classpath', "$rootDir/engine/build/classes",
                                                      '--lib', "$path/platforms/android-$compileSdk/android.jar",
                                                      '--min-api', "$minSdk",
-                                                     '--output', "$moduleDexesDir"])
+                                                     '--output', "$jarOutputPath"])
+        }
+        FileSystem jarFileSystem
+        try {
+            jarFileSystem = FileSystems.newFileSystem(URI.create("jar:" + new File(jarOutputPath).toURI()), new HashMap<String, Object>())
+            fileTree(moduleClassesDir).filter {
+                it.isFile() && !it.name.endsWith(".class") && !it.path.startsWith("assets/")
+            }.each {
+                def destinationPath = jarFileSystem.getPath("/${moduleClassesDir.relativePath(it)}")
+                Files.createDirectories(destinationPath.parent)
+                Files.copy(it.toPath(), destinationPath)
+            }
+        } catch (Exception e) {
+            e.printStackTrace()
+        } finally {
+            if (jarFileSystem != null) {
+                jarFileSystem.close()
+            }
         }
     }
 }
