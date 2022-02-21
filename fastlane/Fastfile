@@ -1,0 +1,66 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:android)
+
+platform :android do
+  desc "Runs all the tests"
+  lane :test do
+    Dir.chdir('..') do
+      gradle(task: "test")
+    end
+  end
+
+  desc "Build a release-signed APK"
+  lane :buildRelease do |options|
+    release_type = (options[:bundle] ? "bundleRelease" : "assembleRelease")
+    gradle(task: "clean " + release_type, project_dir: "..", properties: {
+      "signingKeystore" => ENV['DESTSOL_ANDROID_SIGNING_KEYSTORE'],
+      "signingStorePass" => ENV['DESTSOL_ANDROID_SIGNING_STORE_PASS'],
+      "signingKeyAlias" => ENV['DESTSOL_ANDROID_SIGNING_KEY_ALIAS'],
+      "signingKeyPass" => ENV['DESTSOL_ANDROID_SINGING_KEY_PASS']
+    })
+  end
+
+  desc "Deploy a new internal version to Google Play via Internal App Sharing"
+  lane :deployInternalAppSharing do
+    buildRelease(bundle: true)
+    upload_to_play_store_internal_app_sharing
+  end
+
+  desc "Deploy a new internal release to Google Play"
+  lane :deployInternal do
+    buildRelease(bundle: true)
+    upload_to_play_store(track: "internal")
+  end
+
+  desc "Deploy a new alpha to Google Play"
+  lane :deployAlpha do
+    buildRelease(bundle: true)
+    upload_to_play_store(track: "alpha")
+  end
+
+  desc "Deploy a new beta to Google Play"
+  lane :deployBeta do
+    buildRelease(bundle: true)
+    upload_to_play_store(track: "beta")
+  end
+
+  desc "Deploy a new release to Google Play"
+  lane :deployProduction do
+    buildRelease(bundle: true)
+    upload_to_play_store(track: "production")
+  end
+end
