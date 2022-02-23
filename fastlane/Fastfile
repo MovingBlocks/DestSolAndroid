@@ -26,7 +26,8 @@ platform :android do
   desc "Build a release-signed APK"
   lane :buildRelease do |options|
     release_type = (options[:bundle] ? "bundleRelease" : "assembleRelease")
-    gradle(task: "clean " + release_type, project_dir: "..", properties: {
+    # Explicitly run the copyAndroidNatives task here because sometimes the natives don't get packaged in the app bundle.
+    gradle(task: "clean :android:copyAndroidNatives :android:" + release_type, project_dir: "..", properties: {
       "signingKeystore" => ENV['DESTSOL_ANDROID_SIGNING_KEYSTORE'],
       "signingStorePass" => ENV['DESTSOL_ANDROID_SIGNING_STORE_PASS'],
       "signingKeyAlias" => ENV['DESTSOL_ANDROID_SIGNING_KEY_ALIAS'],
