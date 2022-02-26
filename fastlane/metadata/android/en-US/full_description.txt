@@ -1,0 +1,13 @@
+Destination Sol is a free-to-play hardcore space arcade/RPG. You start as a pilot of a small fighter ship on the edge of a star system, and you're free to explore the game world, land on planets, fight with enemies, upgrade your ship and equipment, hire mercenaries, mine asteroids, and more.
+
+Key Features:
+- Randomly generated open world, consisting of 2 star systems, planets, asteroid belts and mazes.
+- Ability to seamlessly land on planets.
+- 3 planet types.
+- Enemies of many different types, ally fighters, traders, outposts.
+- 6 ship types to pilot.
+- Over 50 items to equip -- weapons, shields, armor, special abilities, and so on
+
+Free & open source. Also available on PC, Linux, and Mac: http://store.steampowered.com/app/342980/
+
+Source code & project: https://github.com/MovingBlocks/DestinationSol

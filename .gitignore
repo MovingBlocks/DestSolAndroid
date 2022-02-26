@@ -49,3 +49,9 @@ Thumbs.db
 ## The asset files are copied into the build from the module/engine folders
 assets/*
 !assets/copyResHere.txt
+
+## Fastlane
+fastlane/README.md
+fastlane/.env
+fastlane/report.xml
+playstore_secret.json

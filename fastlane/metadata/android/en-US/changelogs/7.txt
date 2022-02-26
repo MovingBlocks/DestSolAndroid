@@ -1,0 +1,10 @@
+Official soundtrack by NeonInsect released at last! Note that the app size went up a fair bit for that reason (9ish mb to 61mb)
+
+The way our Android build is prepared also changed a bit, could be unexpected issues, especially on older devices.
+
+Other changes
+- Star gates should no longer spawn within each other
+- Ship icon should be visible while jumping between gates
+- Equipped weapons should persist through reloads
+- Lots of technical refactoring for later improvements
+- Credits updated

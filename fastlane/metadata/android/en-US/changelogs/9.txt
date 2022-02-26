@@ -1,0 +1,7 @@
+Patch release v1.4.1 with some recent fixes related to v1.4.0 and in general :-) 
+
+- Mercenaries now start with an appropriate weapon so they'll be helpful without an awkward weapon item throwing phase. Huzzah! 
+- Crash from trying to load a ship with too many items in the save (should be OK to load broken old saves with) 
+- Allow volume control for both sfx and the new music separately 
+- Optimization for how the new music is loaded 
+- Minor extras like docs and project logistics

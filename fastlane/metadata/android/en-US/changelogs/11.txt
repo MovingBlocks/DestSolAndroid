@@ -1,0 +1,18 @@
+Our v2.0.0 release is finally here!
+
+There have been many other small changes and as such it's just impossible to list them all.
+Here are the highlights:
+ - Significant code cleanups and enhancements
+ - Many, many bug fixes (and probably just as many bug introductions!)
+ - Brand new logo and animated menu background
+ - Some UI tweaks, including a remade new ship screen in which you can select how many systems will be generated (up to 9!)
+ - Some balance adjustments, including reducing the time between shots on the blaster
+ - Continuing a game will now generate the very same world each time
+ - Waypoints! Select anywhere on the map to mark for later.
+ - You can now pan the map with your finger
+ - Faction enhancements. Increase your reputation among factions by buying things from them, or shoot at them to make them dislike you!
+
+Changes to system requirements:
+ - The game now requires a minimum of Android 7.0 (Nougat) to run.
+
+For full list of changes, see https://github.com/MovingBlocks/DestinationSol/milestone/4
