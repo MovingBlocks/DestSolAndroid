@@ -254,6 +254,10 @@ task exportModules() {
         deleteDir(assetsModulesDir)
         assetsModulesDir.mkdir()
 
+        // Delete the engine module symlink, since you cannot create a new symlink when one already exists.
+        def engineModuleDir = new File("$projectDir/assets", "engine")
+        deleteDir(engineModuleDir)
+
         boolean canCreateSymlinks
 
         try {
