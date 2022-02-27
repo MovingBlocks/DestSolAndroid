@@ -100,9 +100,9 @@ ext {
     keyAliasToUse = "notset"
     keyPassToUse = "notset"
 
-    compileSdk = 28
+    compileSdk = 30
     minSdk = 24
-    targetSdk = 28
+    targetSdk = 30
 
     // Load values from properties passed to the project, such as via gradle.properties in the user's home .gradle dir
     if (project.hasProperty("signingKeystore")) {
