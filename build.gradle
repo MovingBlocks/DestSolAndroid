@@ -15,7 +15,11 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.3'
+        if (version == '2.0.0') {
+            classpath 'com.android.tools.build:gradle:3.2.1'
+        } else {
+            classpath 'com.android.tools.build:gradle:4.1.3'
+        }
     }
 }
 
@@ -71,7 +75,11 @@ dependencies {
     }
     // Android-compatible JOML variant
     implementation "org.joml:joml-jdk3:1.9.25"
-    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.2.0-SNAPSHOT')
+    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.2.0-SNAPSHOT') {
+        // Only include gestalt-android.
+        // This is safe because gestalt-android has not changed apart from to add the android assets file sources.
+        exclude group: "org.terasology.gestalt"
+    }
     // TODO: Needed for gestalt because of an internal dependency but since that dependency is never
     //       exposed in a public API, I have no idea why it's needed for compilation.
     implementation "com.github.zafarkhaja:java-semver:0.10.0"
@@ -287,6 +295,14 @@ task exportModules() {
                 include "assets/**"
                 include "module.json"
                 include "reflections.cache"
+            }
+
+            if (version == '2.0.0') {
+                copy {
+                    from "$rootDir/engine/build/classes/java/main"
+                    into "$projectDir/assets/engine"
+                    include "reflections.cache"
+                }
             }
 
             copy {
