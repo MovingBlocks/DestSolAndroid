@@ -286,7 +286,10 @@ task exportModules() {
 
                 file("$projectDir/assets/modules/${module.name}/build/classes").mkdirs()
                 Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/classes/reflections.cache"), Paths.get("$rootDir/modules/${module.name}/build/classes/reflections.cache"))
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/dexes"), Paths.get("$rootDir/modules/${module.name}/build/dexes"))
+                def moduleDexesDir = "$rootDir/modules/${module.name}/build/dexes";
+                if (file(moduleDexesDir).exists()) {
+                    Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/dexes"), Paths.get(moduleDexesDir))
+                }
             }
         } else {
             copy {
