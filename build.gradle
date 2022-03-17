@@ -80,6 +80,12 @@ dependencies {
         // This is safe because gestalt-android has not changed apart from to add the android assets file sources.
         exclude group: "org.terasology.gestalt"
     }
+
+    if (version == '2.0.0') {
+        // Gestalt does not use JavaAssist to compile
+        compileOnly 'org.javassist:javassist:3.20.0-GA'
+    }
+
     // TODO: Needed for gestalt because of an internal dependency but since that dependency is never
     //       exposed in a public API, I have no idea why it's needed for compilation.
     implementation "com.github.zafarkhaja:java-semver:0.10.0"
@@ -268,6 +274,14 @@ task exportModules() {
 
         boolean canCreateSymlinks
 
+        if (version == '2.0.0') {
+            copy {
+                from "$rootDir/engine/build/classes/java/main"
+                into "$rootDir/engine/build/resources/main/org/destinationsol"
+                include "reflections.cache"
+            }
+        }
+
         try {
             Files.createSymbolicLink(Paths.get("$projectDir/assets/engine"), Paths.get("$rootDir/engine/build/resources/main/org/destinationsol"))
             canCreateSymlinks = true
@@ -298,14 +312,6 @@ task exportModules() {
                 include "assets/**"
                 include "module.json"
                 include "reflections.cache"
-            }
-
-            if (version == '2.0.0') {
-                copy {
-                    from "$rootDir/engine/build/classes/java/main"
-                    into "$projectDir/assets/engine"
-                    include "reflections.cache"
-                }
             }
 
             copy {
