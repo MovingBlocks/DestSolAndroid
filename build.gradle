@@ -71,7 +71,7 @@ dependencies {
     }
     // Android-compatible JOML variant
     implementation "org.joml:joml-jdk3:1.9.25"
-    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: '7.2.0-SNAPSHOT')
+    implementation(group: 'org.terasology.gestalt', name: 'gestalt-android', version: gestaltVersion)
     // TODO: Needed for gestalt because of an internal dependency but since that dependency is never
     //       exposed in a public API, I have no idea why it's needed for compilation.
     implementation "com.github.zafarkhaja:java-semver:0.10.0"
@@ -89,8 +89,14 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86_64"
 
+    // Add reflections purely for NUI. NUI uses the ReflectionUtils class from it.
+    implementation "org.terasology:reflections:0.9.12-MB"
+
     // Android-compatible logging
     implementation group: 'org.slf4j', name: 'slf4j-android', version: '1.7.25'
+
+    // Backport some Java 8 APIs like java.time for gestalt
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 }
 
 ext {
@@ -100,9 +106,9 @@ ext {
     keyAliasToUse = "notset"
     keyPassToUse = "notset"
 
-    compileSdk = 28
+    compileSdk = 30
     minSdk = 24
-    targetSdk = 28
+    targetSdk = 30
 
     // Load values from properties passed to the project, such as via gradle.properties in the user's home .gradle dir
     if (project.hasProperty("signingKeystore")) {
@@ -127,6 +133,9 @@ android {
 
     // Make it clear we're compiling for Java 8
     compileOptions {
+        // Backport some Java 8 APIs like java.time for gestalt
+        coreLibraryDesugaringEnabled true
+
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -151,6 +160,15 @@ android {
 
     lintOptions {
         abortOnError false
+    }
+
+    packagingOptions {
+        merge 'META-INF/annotations/*'
+        merge 'META-INF/subtypes/*'
+        merge 'META-INF/services/*'
+
+        // The contents of the "gestalt-indexes-present" file is never read, so just pick any one of them
+        pickFirst 'META-INF/gestalt-indexes-present'
     }
 
     defaultConfig {
@@ -180,25 +198,35 @@ android {
 // called every time gradle gets executed, takes the native dependencies of
 // the natives configuration, and extracts them to the proper libs/ folders
 // so they get packed with the APK.
-task copyAndroidNatives() { 
-    file("libs/armeabi/").mkdirs();
-    file("libs/armeabi-v7a/").mkdirs();
-    file("libs/x86/").mkdirs();
+task copyAndroidNatives {
+    doFirst {
+        file("libs/armeabi/").mkdirs()
+        file("libs/armeabi-v7a/").mkdirs()
+        file("libs/arm64-v8a/").mkdirs()
+        file("libs/x86_64/").mkdirs()
+        file("libs/x86/").mkdirs()
 
-    configurations.natives.files.each { jar ->
-        def outputDir = null
-        if(jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
-        if(jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
-        if(jar.name.endsWith("natives-armeabi.jar")) outputDir = file("libs/armeabi")
-        if(jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
-        if(jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
-        if(outputDir != null) {
-            copy {
-                from zipTree(jar)
-                into outputDir
-                include "*.so"
+        configurations.natives.copy().files.each { jar ->
+            def outputDir = null
+            if(jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
+            if(jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
+            if(jar.name.endsWith("natives-armeabi.jar")) outputDir = file("libs/armeabi")
+            if(jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
+            if(jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
+            if(outputDir != null) {
+                copy {
+                    from zipTree(jar)
+                    into outputDir
+                    include "*.so"
+                }
             }
         }
+    }
+}
+
+tasks.whenTaskAdded { packageTask ->
+    if (packageTask.name.contains("package")) {
+        packageTask.dependsOn 'copyAndroidNatives'
     }
 }
 
@@ -215,9 +243,9 @@ def deleteDir(File dir) {
     dir.delete()
 }
 
-task modulesReflections
+task modulesJar
 rootProject.destinationSolModules().each { module ->
-    modulesReflections.dependsOn ":modules:$module.name" + ":cacheReflections"
+    modulesJar.dependsOn ":modules:$module.name" + ":jar"
 }
 
 task exportModules() {
@@ -233,8 +261,7 @@ task exportModules() {
 
     outputs.dir("$projectDir/assets/modules")
 
-    dependsOn ":engine:cacheReflections"
-    dependsOn modulesReflections
+    dependsOn modulesJar
 
     doLast {
         dexModules()
@@ -243,6 +270,10 @@ task exportModules() {
         def assetsModulesDir = new File("$projectDir/assets", "modules")
         deleteDir(assetsModulesDir)
         assetsModulesDir.mkdir()
+
+        // Delete the engine module symlink, since you cannot create a new symlink when one already exists.
+        def engineModuleDir = new File("$projectDir/assets", "engine")
+        deleteDir(engineModuleDir)
 
         boolean canCreateSymlinks
 
@@ -263,7 +294,6 @@ task exportModules() {
                 Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/module.json"), Paths.get("$rootDir/modules/${module.name}/module.json"))
 
                 file("$projectDir/assets/modules/${module.name}/build/classes").mkdirs()
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/classes/reflections.cache"), Paths.get("$rootDir/modules/${module.name}/build/classes/reflections.cache"))
                 Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/dexes"), Paths.get("$rootDir/modules/${module.name}/build/dexes"))
             }
         } else {
@@ -283,8 +313,7 @@ task exportModules() {
                         include "${module.name}/assets/**"
                         include "${module.name}/overrides/**"
                         include "${module.name}/deltas/**"
-                        include "${module.name}/build/dexes/*.dex"
-                        include "${module.name}/build/classes/reflections.cache"
+                        include "${module.name}/build/dexes/*.jar"
                     }
                 }
             }
@@ -312,9 +341,9 @@ def dexModules() {
     }
     def dex = "${buildToolsVersions[0]}/$dexCommand"
     for (module in rootProject.destinationSolModules()) {
-        def moduleClassesDir = "${rootProject.projectDir}/modules/${module.name}/build/classes/"
+        def moduleClassesDir = file("${rootProject.projectDir}/modules/${module.name}/build/classes/")
         def moduleClassesFiles = fileTree(moduleClassesDir).filter { it.isFile() && it.name.endsWith('.class')}.files
-        def classesRootPath = new File(moduleClassesDir).toPath()
+        def classesRootPath = moduleClassesDir.toPath()
         def moduleClasses = []
         for (file in moduleClassesFiles) {
             moduleClasses.add(classesRootPath.relativize(file.toPath()))
@@ -325,12 +354,30 @@ def dexModules() {
         }
         def moduleDexesDir = "${rootProject.projectDir}/modules/${module.name}/build/dexes/"
         mkdir(moduleDexesDir)
+        def jarOutputPath = "$moduleDexesDir/${module.name}.jar"
         exec {
             workingDir moduleClassesDir
             commandLine (["$dex"] + moduleClasses + ['--classpath', "$rootDir/engine/build/classes",
                                                      '--lib', "$path/platforms/android-$compileSdk/android.jar",
                                                      '--min-api', "$minSdk",
-                                                     '--output', "$moduleDexesDir"])
+                                                     '--output', "$jarOutputPath"])
+        }
+        FileSystem jarFileSystem
+        try {
+            jarFileSystem = FileSystems.newFileSystem(URI.create("jar:" + new File(jarOutputPath).toURI()), new HashMap<String, Object>())
+            fileTree(moduleClassesDir).filter {
+                it.isFile() && !it.name.endsWith(".class") && !it.path.startsWith("assets/")
+            }.each {
+                def destinationPath = jarFileSystem.getPath("/${moduleClassesDir.relativePath(it)}")
+                Files.createDirectories(destinationPath.parent)
+                Files.copy(it.toPath(), destinationPath)
+            }
+        } catch (Exception e) {
+            e.printStackTrace()
+        } finally {
+            if (jarFileSystem != null) {
+                jarFileSystem.close()
+            }
         }
     }
 }

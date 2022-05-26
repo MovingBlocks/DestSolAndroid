@@ -8,7 +8,7 @@ You can build the Android version of the game by either using the command line t
 
 ### Using the command line
 
-- Download the [Android SDK](https://developer.android.com/studio#downloads) and use the `sdkmanager` tool to install the API 28 build tools.
+- Download the [Android SDK](https://developer.android.com/studio#downloads) and use the `sdkmanager` tool to install the API 30 build tools.
 - In the root Destination Sol project directory, run the command `echo sdk.dir=<SDK_ROOT> > local.properties`, where `<SDK_ROOT>` is the root directory in which
   you installed the Android SDK, to create a new local properties file.
 - To fetch the Android facade, in the same root project directory run the command `gradlew fetchAndroid`
@@ -22,10 +22,10 @@ You can build the Android version of the game by either using the command line t
   
 ### Using IntelliJ IDEA (or Android Studio)
 
-- Use the Android plugin (if not installed, then install it) to install the API 28 SDK build tools and platform tools.
+- Use the Android plugin (if not installed, then install it) to install the API 30 SDK build tools and platform tools.
 - In the root Destination Sol project directory, run the command `gradlew fetchAndroid`. The command should complete successfully.
 - Create a new build configuration based on the "Android App" template. You should set the start-up module to the "android" module.
-- In the `File->Project Structure->SDKs` menu, add a new SDK and set the build target to `Android API 28` and the Java SDK to `Java 1.8`.
+- In the `File->Project Structure->SDKs` menu, add a new SDK and set the build target to `Android API 30` and the Java SDK to `Java 1.8`.
 - In the `File->Project Structure->Modules` menu, select the `android` module and open the `Dependencies` tab.
   Set the module SDK to the new SDK you just added.
 - Set the current build configuration to the newly created one and run the project using the debug button.
