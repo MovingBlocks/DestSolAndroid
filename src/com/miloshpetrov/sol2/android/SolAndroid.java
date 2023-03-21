@@ -2,10 +2,13 @@ package com.miloshpetrov.sol2.android;
 
 import android.content.res.AssetManager;
 import android.os.Bundle;
+import android.content.Context;
 import android.util.Log;
 
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
+import com.badlogic.gdx.backends.android.AndroidAudio;
+import com.badlogic.gdx.backends.android.AsynchronousAndroidAudio;
 import com.google.common.reflect.Reflection;
 import org.destinationsol.SolApplication;
 import org.destinationsol.modules.FacadeModuleConfig;
@@ -36,6 +39,11 @@ public class SolAndroid extends AndroidApplication {
         } catch (Exception e) {
             Log.e("DESTINATION_SOL", "FATAL ERROR: Forced abort!", e);
         }
+    }
+
+    @Override
+    public AndroidAudio createAudio(Context context, AndroidApplicationConfiguration config) {
+        return new AsynchronousAndroidAudio(context, config);
     }
 
     private static class AndroidServices extends ServiceRegistry {
