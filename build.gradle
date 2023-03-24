@@ -15,12 +15,15 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.3'
+        classpath 'com.android.tools.build:gradle:7.3.1'
     }
 }
 
-// TODO: Examine the switch from plain "android" to this some more
-apply plugin: "com.android.application"
+plugins {
+    id 'destination-sol-constants'
+}
+
+apply plugin: 'com.android.application'
 
 repositories {
     mavenLocal()
@@ -36,7 +39,10 @@ repositories {
     maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 
     // Terasology Artifactory for any shared libs
-    maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+    maven {
+        url "http://artifactory.terasology.org/artifactory/virtual-repo-live"
+        allowInsecureProtocol true // TODO: Review this when HTTPS finally supported.
+    }
 
     // everit-org JSON schema dependency
     maven { url "https://jitpack.io" }
@@ -61,7 +67,7 @@ dependencies {
     implementation 'net.sf.trove4j:trove4j:3.0.3'
     implementation 'com.google.protobuf:protobuf-java:3.4.0'
     implementation 'com.googlecode.gentyref:gentyref:1.2.0'
-    compile(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
+    implementation(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
 
     implementation(project(":engine")) {
         // Resolves duplicate class errors
@@ -96,7 +102,7 @@ dependencies {
     implementation group: 'org.slf4j', name: 'slf4j-android', version: '1.7.25'
 
     // Backport some Java 8 APIs like java.time for gestalt
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
 }
 
 ext {
@@ -198,7 +204,7 @@ android {
 // called every time gradle gets executed, takes the native dependencies of
 // the natives configuration, and extracts them to the proper libs/ folders
 // so they get packed with the APK.
-task copyAndroidNatives {
+tasks.register('copyAndroidNatives') {
     doFirst {
         file("libs/armeabi/").mkdirs()
         file("libs/armeabi-v7a/").mkdirs()
@@ -208,12 +214,12 @@ task copyAndroidNatives {
 
         configurations.natives.copy().files.each { jar ->
             def outputDir = null
-            if(jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
-            if(jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
-            if(jar.name.endsWith("natives-armeabi.jar")) outputDir = file("libs/armeabi")
-            if(jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
-            if(jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
-            if(outputDir != null) {
+            if (jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
+            if (jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
+            if (jar.name.endsWith("natives-armeabi.jar")) outputDir = file("libs/armeabi")
+            if (jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
+            if (jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
+            if (outputDir != null) {
                 copy {
                     from zipTree(jar)
                     into outputDir
@@ -243,20 +249,20 @@ def deleteDir(File dir) {
     dir.delete()
 }
 
-task modulesJar
+tasks.register('modulesJar')
 rootProject.destinationSolModules().each { module ->
     modulesJar.dependsOn ":modules:$module.name" + ":jar"
 }
 
-task exportModules() {
+tasks.register('exportModules') {
     inputs.dir("$rootDir/engine/src/main/resources/")
     for (module in rootProject.destinationSolModules()) {
         def moduleClassesDir = "${rootProject.projectDir}/modules/${module.name}/build/classes"
         def assetsDir = "${rootProject.projectDir}/modules/${module.name}/assets"
         if (file(moduleClassesDir).exists()) {
             inputs.dir(moduleClassesDir)
-            inputs.dir(assetsDir)
         }
+        inputs.dir(assetsDir)
     }
 
     outputs.dir("$projectDir/assets/modules")
@@ -404,31 +410,8 @@ def androidSdkPath() {
     return path
 }
 
-task android(type: Exec) {
+tasks.register('android', Exec) {
     def path = androidSdkPath()
     def adb = path + "/platform-tools/adb"
     commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.miloshpetrov.sol2.android/com.miloshpetrov.sol2.android.SolAndroid'
-}
-
-// sets up the Android Idea project, using the old Ant based build.
-idea {
-    module {
-        sourceDirs += file("src");
-        scopes = [ COMPILE: [plus:[project.configurations.compile]]]        
-
-        iml {
-            withXml {
-                def node = it.asNode()
-                def builder = NodeBuilder.newInstance();
-                builder.current = node;
-                builder.component(name: "FacetManager") {
-                    facet(type: "android", name: "Android") {
-                        configuration {
-                            option(name: "UPDATE_PROPERTY_FILES", value:"true")
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
