@@ -294,13 +294,13 @@ tasks.register('exportModules') {
         if (canCreateSymlinks) {
             rootProject.destinationSolModules().each { module ->
                 file("$projectDir/assets/modules/${module.name}").mkdir()
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/assets"), Paths.get("$rootDir/modules/${module.name}/assets"))
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/overrides"), Paths.get("$rootDir/modules/${module.name}/overrides"))
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/deltas"), Paths.get("$rootDir/modules/${module.name}/deltas"))
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/module.json"), Paths.get("$rootDir/modules/${module.name}/module.json"))
-
                 file("$projectDir/assets/modules/${module.name}/build/classes").mkdirs()
-                Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/build/dexes"), Paths.get("$rootDir/modules/${module.name}/build/dexes"))
+                ["assets", "overrides", "deltas", "module.json", "build/dexes"].each { path ->
+                    def sourcePath = "$rootDir/modules/${module.name}/$path"
+                    if (file(sourcePath).exists()) {
+                        Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/$path"), Paths.get(sourcePath))
+                    }
+                }
             }
         } else {
             copy {
