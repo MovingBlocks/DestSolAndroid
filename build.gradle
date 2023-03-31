@@ -15,7 +15,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.1'
+        classpath 'com.android.tools.build:gradle:7.4.2'
     }
 }
 
@@ -67,7 +67,7 @@ dependencies {
     implementation 'net.sf.trove4j:trove4j:3.0.3'
     implementation 'com.google.protobuf:protobuf-java:3.4.0'
     implementation 'com.googlecode.gentyref:gentyref:1.2.0'
-    implementation(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2', ext: 'pom')
+    implementation(group: 'com.github.everit-org.json-schema', name: 'org.everit.json.schema', version: '1.9.2')
 
     implementation(project(":engine")) {
         // Resolves duplicate class errors
@@ -102,7 +102,7 @@ dependencies {
     implementation group: 'org.slf4j', name: 'slf4j-android', version: '1.7.25'
 
     // Backport some Java 8 APIs like java.time for gestalt
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.2'
 }
 
 ext {
@@ -112,9 +112,9 @@ ext {
     keyAliasToUse = "notset"
     keyPassToUse = "notset"
 
-    compileSdk = 30
+    compileSdk = 33
     minSdk = 24
-    targetSdk = 30
+    targetSdk = 33
 
     // Load values from properties passed to the project, such as via gradle.properties in the user's home .gradle dir
     if (project.hasProperty("signingKeystore")) {
