@@ -1,0 +1,8 @@
+2.1.0 has been released!
+
+The highlights of this release:
+ - New World Generation
+ - New UI Framework
+ - New Tutorial
+ - Working maze collisions
+ - Many fixed bugs and fewer crashes
