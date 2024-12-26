@@ -40,8 +40,7 @@ repositories {
 
     // Terasology Artifactory for any shared libs
     maven {
-        url "http://artifactory.terasology.org/artifactory/virtual-repo-live"
-        allowInsecureProtocol true // TODO: Review this when HTTPS finally supported.
+        url "https://artifactory.terasology.io/artifactory/virtual-repo-live"
     }
 
     // everit-org JSON schema dependency
