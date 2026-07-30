@@ -15,7 +15,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
+        classpath 'com.android.tools.build:gradle:9.3.1'
     }
 }
 
@@ -109,9 +109,9 @@ ext {
     keyAliasToUse = "notset"
     keyPassToUse = "notset"
 
-    compileSdk = 33
+    compileSdk = 36
     minSdk = 24
-    targetSdk = 33
+    targetSdk = 36
 
     // Load values from properties passed to the project, such as via gradle.properties in the user's home .gradle dir
     if (project.hasProperty("signingKeystore")) {
@@ -132,6 +132,7 @@ ext {
 }
 
 android {
+    namespace 'com.miloshpetrov.sol2.android'
     compileSdkVersion(project.ext.compileSdk)
 
     // Make it clear we're compiling for Java 8
@@ -139,8 +140,8 @@ android {
         // Backport some Java 8 APIs like java.time for gestalt
         coreLibraryDesugaringEnabled true
 
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     sourceSets {
@@ -244,85 +245,72 @@ def deleteDir(File dir) {
     dir.delete()
 }
 
-tasks.register('modulesJar')
-rootProject.destinationSolModules().each { module ->
-    modulesJar.dependsOn ":modules:$module.name" + ":jar"
-}
+abstract class PropertyBasedSync extends Sync {
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
 
-tasks.register('exportModules') {
-    inputs.dir("$rootDir/engine/src/main/resources/")
-    for (module in rootProject.destinationSolModules()) {
-        def moduleClassesDir = "${rootProject.projectDir}/modules/${module.name}/build/classes"
-        def assetsDir = "${rootProject.projectDir}/modules/${module.name}/assets"
-        if (file(moduleClassesDir).exists()) {
-            inputs.dir(moduleClassesDir)
-        }
-        inputs.dir(assetsDir)
+    @Override
+    File getDestinationDir() {
+        return outputDirectory.get().asFile
     }
 
-    outputs.dir("$projectDir/assets/modules")
+    @Override
+    void setDestinationDir(File destination) {
+        outputDirectory.set(destination)
+    }
+}
 
-    dependsOn modulesJar
+abstract class PropertyBasedGenericTask extends DefaultTask {
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+}
 
-    doLast {
-        dexModules()
+androidComponents {
+    boolean canCreateSymlinks = false
 
-        // Clear the modules directory to ensure that it is up-to date
-        def assetsModulesDir = new File("$projectDir/assets", "modules")
-        deleteDir(assetsModulesDir)
-        assetsModulesDir.mkdir()
+    try {
+        def tempDir = layout.buildDirectory.dir('tmp').get()
+        tempDir.asFile.mkdir()
+        def testSymlink = tempDir.file('test_symlink').asFile
+        Files.createSymbolicLink(testSymlink.toPath(), Paths.get("$rootDir/engine/build/resources/main/org/destinationsol"))
+        testSymlink.delete()
+        canCreateSymlinks = true
+    } catch (Exception ignore) {
+        // Copy the files instead
+        canCreateSymlinks = false
+    }
 
-        // Delete the engine module symlink, since you cannot create a new symlink when one already exists.
-        def engineModuleDir = new File("$projectDir/assets", "engine")
-        deleteDir(engineModuleDir)
-
-        boolean canCreateSymlinks
-
-        try {
-            Files.createSymbolicLink(Paths.get("$projectDir/assets/engine"), Paths.get("$rootDir/engine/build/resources/main/org/destinationsol"))
-            canCreateSymlinks = true
-        } catch (Exception ignore) {
-            // Copy the files instead
-            canCreateSymlinks = false
+    def exportEngineModuleByCopy = tasks.register('exportModuleEngineByCopy', PropertyBasedSync) {
+        dependsOn ":engine:processResources"
+        from "$rootDir/engine/build/resources/main/org/destinationsol"
+        include "assets/**"
+        include "module.json"
+        includeEmptyDirs = false
+        eachFile {
+            relativePath = relativePath.prepend("engine")
         }
-
-        if (canCreateSymlinks) {
-            rootProject.destinationSolModules().each { module ->
-                file("$projectDir/assets/modules/${module.name}").mkdir()
-                file("$projectDir/assets/modules/${module.name}/build/classes").mkdirs()
-                ["assets", "overrides", "deltas", "module.json", "build/dexes"].each { path ->
-                    def sourcePath = "$rootDir/modules/${module.name}/$path"
-                    if (file(sourcePath).exists()) {
-                        Files.createSymbolicLink(Paths.get("$projectDir/assets/modules/${module.name}/$path"), Paths.get(sourcePath))
+    }
+    def exportEngineModuleBySymlink = tasks.register('exportModuleEngineBySymlink', PropertyBasedGenericTask) {
+        dependsOn ":engine:processResources"
+        doLast {
+            outputDirectory.dir('engine').get().asFile.mkdir()
+            ["assets", "overrides", "deltas", "module.json"].each { symlinkPath ->
+                def sourcePath = "$rootDir/engine/build/resources/main/org/destinationsol/$symlinkPath"
+                if (file(sourcePath).exists()) {
+                    def destinationPath = outputDirectory.dir('engine').get().dir(symlinkPath).asFile.toPath()
+                    if (Files.exists(destinationPath)) {
+                        Files.delete(destinationPath)
                     }
-                }
-            }
-        } else {
-            copy {
-                from "$rootDir/engine/build/resources/main/org/destinationsol"
-                into "$projectDir/assets/engine"
-                include "assets/**"
-                include "module.json"
-                include "reflections.cache"
-            }
-
-            copy {
-                into "$projectDir/assets/modules"
-                from("$rootDir/modules") {
-                    rootProject.destinationSolModules().each { module ->
-                        include "${module.name}/module.json"
-                        include "${module.name}/assets/**"
-                        include "${module.name}/overrides/**"
-                        include "${module.name}/deltas/**"
-                        include "${module.name}/build/dexes/*.jar"
-                    }
+                    Files.createSymbolicLink(destinationPath, Paths.get(sourcePath))
                 }
             }
         }
     }
-}
 
-def dexModules() {
+    onVariants(selector().all(), { variant ->
+        variant.sources.assets.addGeneratedSourceDirectory(canCreateSymlinks ? exportEngineModuleBySymlink : exportEngineModuleByCopy, canCreateSymlinks ? PropertyBasedGenericTask::getOutputDirectory : PropertyBasedSync::getOutputDirectory)
+    })
+
     def path = androidSdkPath()
     def dexCommand = System.getProperty("os.name").toLowerCase().contains("windows") ? "d8.bat" : "d8"
     def buildToolsVersions = new File(path, "build-tools").listFiles(new FileFilter() {
@@ -340,50 +328,109 @@ def dexModules() {
     if (buildToolsVersions.length == 0) {
         throw new TaskExecutionException(exportModules, new FileNotFoundException("An Android SDK build tools version >= $compileSdk could not be found."))
     }
-    def dex = "${buildToolsVersions[0]}/$dexCommand"
-    for (module in rootProject.destinationSolModules()) {
-        def moduleClassesDir = file("${rootProject.projectDir}/modules/${module.name}/build/classes/")
-        def moduleClassesFiles = fileTree(moduleClassesDir).filter { it.isFile() && it.name.endsWith('.class')}.files
-        def classesRootPath = moduleClassesDir.toPath()
-        def moduleClasses = []
-        for (file in moduleClassesFiles) {
-            moduleClasses.add(classesRootPath.relativize(file.toPath()))
-        }
-        if (moduleClasses.size() == 0) {
-            // The dexed code jars are only produced for code-bearing modules.
-            continue;
-        }
+
+    rootProject.destinationSolModules().each { module ->
+        def moduleBuildDir = file("${rootProject.projectDir}/modules/${module.name}/build")
+        def moduleClassesDir = file("$moduleBuildDir/classes/")
         def moduleDexesDir = "${rootProject.projectDir}/modules/${module.name}/build/dexes/"
-        mkdir(moduleDexesDir)
-        def jarOutputPath = "$moduleDexesDir/${module.name}.jar"
-        exec {
-            workingDir moduleClassesDir
-            commandLine (["$dex"] + moduleClasses + ['--classpath', "$rootDir/engine/build/classes",
-                                                     '--lib', "$path/platforms/android-$compileSdk/android.jar",
-                                                     '--min-api', "$minSdk",
-                                                     '--output', "$jarOutputPath"])
-        }
-        FileSystem jarFileSystem
-        try {
-            jarFileSystem = FileSystems.newFileSystem(URI.create("jar:" + new File(jarOutputPath).toURI()), new HashMap<String, Object>())
-            fileTree(moduleClassesDir).filter {
-                it.isFile() && !it.name.endsWith(".class") && !it.path.startsWith("assets/")
-            }.each {
-                def destinationPath = jarFileSystem.getPath("/${moduleClassesDir.relativePath(it)}")
-                Files.createDirectories(destinationPath.parent)
-                Files.copy(it.toPath(), destinationPath)
+        def codePresent = !fileTree("${rootProject.projectDir}/modules/${module.name}/src/").isEmpty()
+        TaskProvider<Task> thisModuleDexes
+        TaskProvider<Task> thisDexedModuleJar
+        if (codePresent) {
+            thisModuleDexes = tasks.register("moduleDexes$module.name", Exec) {
+                dependsOn ":modules:$module.name:classes"
+                outputs.dir("$moduleDexesDir")
+                def dex = "${buildToolsVersions[0]}/$dexCommand"
+                def moduleClassesFiles = fileTree(moduleClassesDir).filter { it.isFile() && it.name.endsWith('.class') }.files
+                def classesRootPath = moduleClassesDir.toPath()
+                def moduleClasses = []
+                for (file in moduleClassesFiles) {
+                    moduleClasses.add(classesRootPath.relativize(file.toPath()))
+                }
+
+                workingDir moduleClassesDir
+                commandLine(["$dex"] + moduleClasses + ['--classpath', "$rootDir/engine/build/classes",
+                                                        '--lib', "$path/platforms/android-$compileSdk/android.jar",
+                                                        '--min-api', "$minSdk",
+                                                        '--output', "$moduleDexesDir"] as List<String>)
             }
-        } catch (Exception e) {
-            e.printStackTrace()
-        } finally {
-            if (jarFileSystem != null) {
-                jarFileSystem.close()
+            thisDexedModuleJar = tasks.register("dexedModuleJar$module.name", Zip) {
+                def outputDir = layout.buildDirectory.dir("moduleAssetRoots/$module.name/assets/modules/$module.name/build/dexes/")
+                outputs.dir(outputDir)
+                dependsOn thisModuleDexes
+                from("${rootProject.projectDir}/modules/${module.name}/build/dexes/") {
+                    include "**/*.dex"
+                }
+                from("$moduleBuildDir/classes/") {
+                    exclude 'assets/**'
+                    exclude 'dexes/**'
+                    exclude '**/*.class'
+                }
+                destinationDirectory = outputDir
+                archiveFileName = "${module.name}.jar"
             }
         }
+
+        def exportModulesByCopy = tasks.register("exportModule${module.name}ByCopy", PropertyBasedSync) {
+            if (codePresent) {
+                dependsOn thisDexedModuleJar
+            }
+            from("$rootDir/") {
+                include "modules/$module.name/module.json"
+                include "modules/$module.name/assets/**"
+                include "modules/$module.name/overrides/**"
+                include "modules/$module.name/deltas/**"
+            }
+            from(layout.buildDirectory.dir("moduleAssetRoots/$module.name/assets/")) {
+                include "modules/$module.name/build/dexes/${module.name}.jar"
+            }
+            into("modules/$module.name/")
+            preserve {
+                include "build/dexes/**"
+            }
+        }
+
+        def exportModulesBySymlink = tasks.register("exportModule${module.name}BySymlink", PropertyBasedGenericTask) {
+            if (codePresent) {
+                dependsOn thisDexedModuleJar
+            }
+
+            doLast {
+                def moduleRoot = outputDirectory.file("modules/${module.name}").get().asFile
+                moduleRoot.mkdirs()
+                ["assets", "overrides", "deltas", "module.json"].each { symlinkPath ->
+                    def sourcePath = "$rootDir/modules/${module.name}/$symlinkPath"
+                    if (file(sourcePath).exists()) {
+                        def destinationPath = moduleRoot.toPath().resolve(symlinkPath)
+                        if (Files.exists(destinationPath)) {
+                            if (Files.readSymbolicLink(destinationPath) == Paths.get(sourcePath)) {
+                                return
+                            }
+                            Files.delete(destinationPath)
+                        }
+                        Files.createSymbolicLink(destinationPath, Paths.get(sourcePath))
+                    }
+                }
+                if (codePresent) {
+                    def codeJarPath = moduleRoot.toPath().resolve("build/dexes/${module.name}.jar")
+                    def codeJarSourcePath = layout.buildDirectory.dir("moduleAssetRoots/$module.name/assets/modules/$module.name/build/dexes/").get().file("${module.name}.jar").asFile.toPath()
+                    if (Files.exists(codeJarPath)) {
+                        if (Files.readSymbolicLink(codeJarPath) == codeJarSourcePath) {
+                            return
+                        }
+                        Files.delete(codeJarPath)
+                    }
+                    codeJarPath.toFile().parentFile.mkdirs()
+                    Files.createSymbolicLink(codeJarPath, codeJarSourcePath)
+                }
+            }
+        }
+
+        onVariants(selector().all(), { variant ->
+            variant.sources.assets.addGeneratedSourceDirectory(canCreateSymlinks ? exportModulesBySymlink : exportModulesByCopy, canCreateSymlinks ? PropertyBasedGenericTask::getOutputDirectory : PropertyBasedSync::getOutputDirectory)
+        })
     }
 }
-
-preBuild.dependsOn(exportModules)
 
 def androidSdkPath() {
     def path
