@@ -26,6 +26,7 @@ import org.terasology.gestalt.module.ModulePathScanner;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Collection;
 import java.util.Collections;
 
 public class SolAndroid extends AndroidApplication {
@@ -63,8 +64,8 @@ public class SolAndroid extends AndroidApplication {
         }
 
         @Override
-        public File getModulesPath() {
-            return new File("modules");
+        public Collection<File> getModulePaths() {
+            return Collections.singletonList(new File("modules"));
         }
 
         // Android does not allow changing the system security policy.
